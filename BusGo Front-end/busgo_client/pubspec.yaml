@@ -1,0 +1,30 @@
+name: busgo_client
+description: "BusGo Client - Smart Bus Travel, Simplified"
+publish_to: 'none'
+version: 2.4.1+1
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  provider: ^6.1.2
+  go_router: ^14.8.1
+  qr_flutter: ^4.1.0
+  shared_preferences: ^2.3.4
+  google_fonts: ^6.3.2
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  http: ^1.2.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/

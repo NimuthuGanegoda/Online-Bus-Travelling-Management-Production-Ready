@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1a3a6a"/>
+      <stop offset="100%" stop-color="#0a1628"/>
+    </radialGradient>
+    <linearGradient id="busGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4a9eff"/>
+      <stop offset="100%" stop-color="#1a6cf0"/>
+    </linearGradient>
+    <linearGradient id="shineGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.3)"/>
+      <stop offset="50%" stop-color="rgba(255,255,255,0.05)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Outer circle -->
+  <circle cx="100" cy="100" r="95" fill="url(#bgGrad)" stroke="#2a5a9a" stroke-width="3"/>
+  <circle cx="100" cy="100" r="90" fill="none" stroke="#1a4a8a" stroke-width="1" opacity="0.5"/>
+
+  <!-- Inner glow ring -->
+  <circle cx="100" cy="100" r="82" fill="none" stroke="#3a7acc" stroke-width="0.5" opacity="0.4"/>
+
+  <!-- Bus body -->
+  <g filter="url(#glow)" transform="translate(100,95)">
+    <!-- Bus main body -->
+    <rect x="-48" y="-22" width="96" height="44" rx="8" ry="8" fill="url(#busGrad)" opacity="0.9"/>
+    <!-- Bus roof -->
+    <path d="M-40,-22 L-40,-32 Q-40,-38 -34,-38 L34,-38 Q40,-38 40,-32 L40,-22" fill="#3a8aef" opacity="0.8"/>
+    <!-- Windshield -->
+    <rect x="-44" y="-18" width="30" height="20" rx="3" fill="#0a2040" opacity="0.7"/>
+    <rect x="-44" y="-18" width="30" height="20" rx="3" fill="url(#shineGrad)"/>
+    <!-- Side windows -->
+    <rect x="-8" y="-18" width="14" height="16" rx="2" fill="#0a2040" opacity="0.7"/>
+    <rect x="10" y="-18" width="14" height="16" rx="2" fill="#0a2040" opacity="0.7"/>
+    <rect x="28" y="-18" width="16" height="20" rx="3" fill="#0a2040" opacity="0.7"/>
+    <!-- Window shine -->
+    <rect x="-8" y="-18" width="14" height="16" rx="2" fill="url(#shineGrad)" opacity="0.5"/>
+    <rect x="10" y="-18" width="14" height="16" rx="2" fill="url(#shineGrad)" opacity="0.5"/>
+    <!-- Headlight -->
+    <ellipse cx="48" cy="5" rx="4" ry="6" fill="#ffdd44" opacity="0.9"/>
+    <ellipse cx="48" cy="5" rx="2" ry="3" fill="#ffffff" opacity="0.7"/>
+    <!-- Tail light -->
+    <ellipse cx="-48" cy="5" rx="3" ry="5" fill="#ff4444" opacity="0.8"/>
+    <!-- Bumper -->
+    <rect x="-46" y="18" width="92" height="6" rx="3" fill="#2a6acc" opacity="0.6"/>
+    <!-- Wheels -->
+    <circle cx="-28" cy="24" r="9" fill="#111" stroke="#333" stroke-width="2"/>
+    <circle cx="-28" cy="24" r="4" fill="#444"/>
+    <circle cx="28" cy="24" r="9" fill="#111" stroke="#333" stroke-width="2"/>
+    <circle cx="28" cy="24" r="4" fill="#444"/>
+    <!-- Door -->
+    <rect x="-10" y="2" width="12" height="18" rx="2" fill="#1a5acc" stroke="#2a6adc" stroke-width="0.5"/>
+  </g>
+
+  <!-- BUS GO text at top -->
+  <text x="100" y="52" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="22" fill="#ffffff" letter-spacing="4" filter="url(#glow)">BUS GO</text>
+
+  <!-- Decorative bottom arc text area -->
+  <text x="100" y="170" text-anchor="middle" font-family="Arial, sans-serif" font-weight="600" font-size="10" fill="#4a9eff" letter-spacing="2" opacity="0.8">TRANSPORT</text>
+</svg>
