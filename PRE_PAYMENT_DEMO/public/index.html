@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Payee Sandbox Test</title>
+</head>
+<body>
+    <h2>Test Payee Payment</h2>
+    <form id="paymentForm">
+        <input name="first_name" placeholder="First Name" required><br>
+        <input name="last_name" placeholder="Last Name" required><br>
+        <input name="email" placeholder="Email" type="email" required><br>
+        <input name="amount" placeholder="Amount (LKR)" type="number" required><br>
+        <button type="submit">Pay Now</button>
+    </form>
+
+    <script>
+        document.getElementById('paymentForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+
+    // Add unique order ID
+    data.order_id = 'ORD-' + Date.now();
+
+    // Call backend to create sandbox payment payload
+    const res = await fetch('/create-payment', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(data)
+    });
+
+    const paymentData = await res.json();
+
+    // Redirect to Payee sandbox checkout
+    const query = new URLSearchParams(paymentData).toString();
+    const sandboxUrl = `https://sandbox.payhere.lk/pay/checkout?${query}`;
+    window.location.href = sandboxUrl;
+});
+    </script>
+</body>
+</html>
