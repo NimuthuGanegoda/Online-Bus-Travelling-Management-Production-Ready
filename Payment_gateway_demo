@@ -1,1 +1,0 @@
-This project demonstrates a full end-to-end integration of the Payee payment gateway in sandbox mode, suitable for testing payments in Sri Lankan applications without using real money. It provides a backend server to securely generate sandbox payment payloads and a frontend form to initiate transactions and redirect to the Payee sandbox checkout page.
