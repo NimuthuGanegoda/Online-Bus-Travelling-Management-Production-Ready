@@ -2,24 +2,32 @@
 
 This repository contains the BusGo ecosystem: backend APIs, web admin frontend, Flutter mobile apps, ML experiments, and a payment demo.
 
-## Repository Structure
+## Organized Structure
 
-- `BusGo Back-end/busgo-backend/`
+- `apps/backend/busgo-backend/`
   - Production-ready Node.js + Express backend API
-- `BusGo Front-end/busgo_admin/`
+- `apps/frontend/busgo_admin/`
   - React + TypeScript + Vite admin dashboard
-- `BusGo Front-end/busgo_client/`
+- `apps/mobile/busgo_client/`
   - Flutter client app
-- `BusGo Front-end/busgo_drive/`
+- `apps/mobile/busgo_drive/`
   - Flutter driver app
-- `BusGo Front-end/busgo_scanner/`
+- `apps/mobile/busgo_scanner/`
   - Flutter scanner app
-- `NEO_MODEL_BUSGO/`
+- `ai-models/neo-model-busgo/`
   - ML and data science experiments
-- `PRE_PAYMENT_DEMO/`
+- `demos/pre-payment-demo/`
   - Payee sandbox payment integration demo
 - `prototype/`
   - Git submodule to the prototype repository
+
+## Reorganize Existing Folder Names
+
+If your checkout still has old folder names (for example with spaces and inconsistent casing), run:
+
+```bash
+bash scripts/reorganize-repo.sh
+```
 
 ## Getting Started
 
@@ -34,7 +42,7 @@ git submodule update --init --recursive
 ### 2. Run backend
 
 ```bash
-cd "BusGo Back-end/busgo-backend"
+cd apps/backend/busgo-backend
 npm install
 npm run dev
 ```
@@ -42,7 +50,7 @@ npm run dev
 ### 3. Run admin web app
 
 ```bash
-cd "BusGo Front-end/busgo_admin"
+cd apps/frontend/busgo_admin
 npm install
 npm run dev
 ```
@@ -52,17 +60,17 @@ npm run dev
 Example for client app:
 
 ```bash
-cd "BusGo Front-end/busgo_client"
+cd apps/mobile/busgo_client
 flutter pub get
 flutter run
 ```
 
-Repeat similarly for `busgo_drive` and `busgo_scanner`.
+Repeat similarly for `apps/mobile/busgo_drive` and `apps/mobile/busgo_scanner`.
 
 ### 5. Run payment demo
 
 ```bash
-cd PRE_PAYMENT_DEMO
+cd demos/pre-payment-demo
 npm install
 npm start
 ```
