@@ -1,23 +1,39 @@
 import 'package:flutter/material.dart';
-import '../models/trip_model.dart';
+import '../core/errors/app_exception.dart';
+import '../core/errors/error_handler.dart';
 import '../models/rating_model.dart';
-import '../services/local_storage_service.dart';
-import '../services/mock_data_service.dart';
+import '../models/trip_model.dart';
+import '../services/rating_service.dart';
+import '../services/trip_service.dart';
 
 class TripProvider extends ChangeNotifier {
+  final TripService _tripService;
+  final RatingService _ratingService;
+
   List<TripModel> _tripHistory = [];
   List<TripModel> _recentTrips = [];
   List<RatingModel> _ratings = [];
+  TripModel? _ongoingTrip;
+
+  // Rating form state
   int _selectedRating = 3;
   List<String> _selectedTags = ['Punctual', 'Safe Driving'];
   String _ratingComment = '';
 
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  TripProvider(this._tripService, this._ratingService);
+
   List<TripModel> get tripHistory => _tripHistory;
   List<TripModel> get recentTrips => _recentTrips;
   List<RatingModel> get ratings => _ratings;
+  TripModel? get ongoingTrip => _ongoingTrip;
   int get selectedRating => _selectedRating;
   List<String> get selectedTags => _selectedTags;
   String get ratingComment => _ratingComment;
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
 
   int get totalTrips => _tripHistory.length;
   double get totalSpent =>
@@ -28,35 +44,117 @@ class TripProvider extends ChangeNotifier {
         _tripHistory.length;
   }
 
-  /// Load trip history from local storage, seeding with mock data if empty
-  void loadTripHistory() {
-    final stored = LocalStorageService.getTripHistory();
-    if (stored.isNotEmpty) {
-      _tripHistory = stored.map((j) => TripModel.fromJson(j)).toList();
-    } else {
-      _tripHistory = MockDataService.tripHistory.toList();
-      _saveTripHistory();
-    }
-    _recentTrips =
-        _tripHistory.length > 2 ? _tripHistory.sublist(0, 2) : _tripHistory;
-    _loadRatings();
+  // ── Load ────────────────────────────────────────────────────────────────────
+
+  Future<void> loadTripHistory() async {
+    _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
+
+    try {
+      _tripHistory = await _tripService.getTrips(status: 'completed');
+      _ongoingTrip = await _findOngoingTrip();
+      _recentTrips = _tripHistory.length > 2
+          ? _tripHistory.sublist(0, 2)
+          : _tripHistory;
+    } on AppException catch (e) {
+      _errorMessage = ErrorHandler.userMessage(e);
+    } catch (e) {
+      _errorMessage = ErrorHandler.userMessage(ErrorHandler.handle(e));
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
-  void _loadRatings() {
-    final stored = LocalStorageService.getRatings();
-    _ratings = stored.map((j) => RatingModel.fromJson(j)).toList();
+  Future<TripModel?> _findOngoingTrip() async {
+    try {
+      final ongoing = await _tripService.getTrips(status: 'ongoing');
+      return ongoing.isNotEmpty ? ongoing.first : null;
+    } catch (_) {
+      return null;
+    }
   }
 
-  Future<void> _saveTripHistory() async {
-    await LocalStorageService.saveTripHistory(
-        _tripHistory.map((t) => t.toJson()).toList());
+  Future<void> loadRatings() async {
+    try {
+      _ratings = await _ratingService.getMyRatings();
+      notifyListeners();
+    } catch (_) {}
   }
 
-  Future<void> _saveRatings() async {
-    await LocalStorageService.saveRatings(
-        _ratings.map((r) => r.toJson()).toList());
+  // ── Trip actions ────────────────────────────────────────────────────────────
+
+  Future<TripModel?> startTrip({
+    required String busId,
+    required String routeId,
+    String? boardingStopId,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final trip = await _tripService.startTrip(
+        busId:          busId,
+        routeId:        routeId,
+        boardingStopId: boardingStopId,
+      );
+      _ongoingTrip = trip;
+      _isLoading = false;
+      notifyListeners();
+      return trip;
+    } on AppException catch (e) {
+      _isLoading = false;
+      _errorMessage = ErrorHandler.userMessage(e);
+      notifyListeners();
+      return null;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = ErrorHandler.userMessage(ErrorHandler.handle(e));
+      notifyListeners();
+      return null;
+    }
   }
+
+  Future<TripModel?> alightTrip({
+    String? alightingStopId,
+    double? fareLkr,
+  }) async {
+    if (_ongoingTrip?.id == null) return null;
+
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final trip = await _tripService.alightTrip(
+        _ongoingTrip!.id!,
+        alightingStopId: alightingStopId,
+        fareLkr:         fareLkr,
+      );
+      _ongoingTrip = null;
+      _tripHistory.insert(0, trip);
+      _recentTrips = _tripHistory.length > 2
+          ? _tripHistory.sublist(0, 2)
+          : _tripHistory;
+      _isLoading = false;
+      notifyListeners();
+      return trip;
+    } on AppException catch (e) {
+      _isLoading = false;
+      _errorMessage = ErrorHandler.userMessage(e);
+      notifyListeners();
+      return null;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = ErrorHandler.userMessage(ErrorHandler.handle(e));
+      notifyListeners();
+      return null;
+    }
+  }
+
+  // ── Rating form ─────────────────────────────────────────────────────────────
 
   void setRating(int rating) {
     _selectedRating = rating;
@@ -76,37 +174,44 @@ class TripProvider extends ChangeNotifier {
     _ratingComment = comment;
   }
 
-  /// Submit a rating and persist it
-  Future<void> submitRating({
-    String routeNumber = '39A',
-    String driverName = 'John Murphy',
-    String driverId = 'DRV-2841',
+  Future<bool> submitRating({
+    required String tripId,
+    required String busId,
   }) async {
-    final rating = RatingModel(
-      tripRouteNumber: routeNumber,
-      driverName: driverName,
-      driverId: driverId,
-      rating: _selectedRating,
-      tags: List<String>.from(_selectedTags),
-      comment: _ratingComment,
-      date: DateTime.now().toIso8601String(),
-    );
-    _ratings.add(rating);
-    await _saveRatings();
-
-    // Reset form
-    _selectedRating = 3;
-    _selectedTags = ['Punctual', 'Safe Driving'];
-    _ratingComment = '';
+    _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
+
+    try {
+      final rating = await _ratingService.submitRating(
+        tripId:  tripId,
+        busId:   busId,
+        stars:   _selectedRating,
+        tags:    List.from(_selectedTags),
+        comment: _ratingComment,
+      );
+      _ratings.insert(0, rating);
+      _selectedRating = 3;
+      _selectedTags = ['Punctual', 'Safe Driving'];
+      _ratingComment = '';
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on AppException catch (e) {
+      _isLoading = false;
+      _errorMessage = ErrorHandler.userMessage(e);
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = ErrorHandler.userMessage(ErrorHandler.handle(e));
+      notifyListeners();
+      return false;
+    }
   }
 
-  /// Add a new trip and persist
-  Future<void> addTrip(TripModel trip) async {
-    _tripHistory.insert(0, trip);
-    _recentTrips =
-        _tripHistory.length > 2 ? _tripHistory.sublist(0, 2) : _tripHistory;
-    await _saveTripHistory();
+  void clearError() {
+    _errorMessage = null;
     notifyListeners();
   }
 }

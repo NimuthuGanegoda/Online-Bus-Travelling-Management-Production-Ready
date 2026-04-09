@@ -115,7 +115,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     ),
                                     alignment: Alignment.center,
                                     child: Text(
-                                      user.initials,
+                                      user?.initials ?? '?',
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 24,
@@ -153,7 +153,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      user.fullName,
+                                      user?.fullName ?? 'User',
                                       style: const TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w700,
@@ -161,14 +161,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       ),
                                     ),
                                     Text(
-                                      user.email,
+                                      user?.email ?? '',
                                       style: const TextStyle(
                                         fontSize: 11,
                                         color: AppColors.textMuted,
                                       ),
                                     ),
                                     Text(
-                                      user.phone,
+                                      user?.phone ?? '',
                                       style: const TextStyle(
                                         fontSize: 11,
                                         color: AppColors.textMuted,
@@ -223,7 +223,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        user.membershipType,
+                                        user?.membershipType ?? 'Standard Member',
                                         style: const TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w600,
@@ -231,7 +231,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         ),
                                       ),
                                       Text(
-                                        'Since ${user.memberSince} \u00b7 ${user.totalTrips} trips',
+                                        'Since ${user?.memberSince ?? 'N/A'} \u00b7 ${user?.totalTrips ?? 0} trips',
                                         style: const TextStyle(
                                           fontSize: 10,
                                           color: AppColors.textMuted,
@@ -251,7 +251,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         BorderRadius.circular(12),
                                   ),
                                   child: Text(
-                                    user.isActive ? 'Active' : 'Inactive',
+                                    (user?.isActive ?? false) ? 'Active' : 'Inactive',
                                     style: const TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w600,

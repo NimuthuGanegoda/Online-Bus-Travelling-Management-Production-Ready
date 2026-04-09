@@ -1,42 +1,110 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import '../core/errors/app_exception.dart';
+import '../core/errors/error_handler.dart';
 import '../models/user_model.dart';
 import '../services/local_storage_service.dart';
-import '../services/mock_data_service.dart';
+import '../services/user_service.dart';
 
 class UserProvider extends ChangeNotifier {
-  UserModel _user = MockDataService.defaultUser;
+  final UserService _userService;
+
+  UserModel? _user;
+  bool _isLoading = false;
+  String? _errorMessage;
 
   bool _busArrivalAlerts = true;
   bool _serviceUpdates = true;
   bool _promotions = false;
 
-  UserModel get user => _user;
+  UserProvider(this._userService);
+
+  UserModel? get user => _user;
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
   bool get busArrivalAlerts => _busArrivalAlerts;
   bool get serviceUpdates => _serviceUpdates;
   bool get promotions => _promotions;
 
-  /// Load notification preferences from local storage
-  void loadPreferences() {
-    _busArrivalAlerts = LocalStorageService.getBusArrivalAlerts();
-    _serviceUpdates = LocalStorageService.getServiceUpdates();
-    _promotions = LocalStorageService.getPromotions();
-    notifyListeners();
-  }
-
-  /// Load user data from a given UserModel (from AuthProvider)
   void setUser(UserModel user) {
     _user = user;
     notifyListeners();
   }
 
-  /// Load user from local storage by email
-  void loadUserFromStorage(String email) {
-    final entry = LocalStorageService.getRegisteredUser(email);
-    if (entry != null) {
-      _user = UserModel.fromJson(entry['user'] as Map<String, dynamic>);
+  void loadPreferences() {
+    _busArrivalAlerts = LocalStorageService.getBusArrivalAlerts();
+    _serviceUpdates   = LocalStorageService.getServiceUpdates();
+    _promotions       = LocalStorageService.getPromotions();
+    notifyListeners();
+  }
+
+  Future<void> fetchProfile() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _user = await _userService.getProfile();
+    } on AppException catch (e) {
+      _errorMessage = ErrorHandler.userMessage(e);
+    } catch (e) {
+      _errorMessage = ErrorHandler.userMessage(ErrorHandler.handle(e));
+    } finally {
+      _isLoading = false;
       notifyListeners();
     }
   }
+
+  Future<bool> updateProfile(Map<String, dynamic> fields) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _user = await _userService.updateProfile(fields);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on AppException catch (e) {
+      _isLoading = false;
+      _errorMessage = ErrorHandler.userMessage(e);
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = ErrorHandler.userMessage(ErrorHandler.handle(e));
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> uploadAvatar(Uint8List bytes, String fileName, String mimeType) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final avatarUrl = await _userService.uploadAvatar(bytes, fileName, mimeType);
+      if (_user != null) {
+        _user = UserModel.fromJson({..._user!.toJson(), 'avatar_url': avatarUrl});
+      }
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on AppException catch (e) {
+      _isLoading = false;
+      _errorMessage = ErrorHandler.userMessage(e);
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = ErrorHandler.userMessage(ErrorHandler.handle(e));
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // ── Notification preferences (stored locally) ────────────────────────────
 
   void toggleBusArrivalAlerts() {
     _busArrivalAlerts = !_busArrivalAlerts;
@@ -56,10 +124,8 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updateUser(UserModel updatedUser) async {
-    _user = updatedUser;
-    await LocalStorageService.updateUserData(
-        updatedUser.email, updatedUser.toJson());
+  void clearError() {
+    _errorMessage = null;
     notifyListeners();
   }
 }

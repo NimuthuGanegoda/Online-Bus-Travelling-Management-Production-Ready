@@ -22,10 +22,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void initState() {
     super.initState();
     final user = context.read<UserProvider>().user;
-    _nameController = TextEditingController(text: user.fullName);
-    _usernameController = TextEditingController(text: user.username);
-    _phoneController = TextEditingController(text: user.phone);
-    _dobController = TextEditingController(text: user.dateOfBirth ?? '');
+    _nameController = TextEditingController(text: user?.fullName ?? '');
+    _usernameController = TextEditingController(text: user?.username ?? '');
+    _phoneController = TextEditingController(text: user?.phone ?? '');
+    _dobController = TextEditingController(text: user?.dateOfBirth ?? '');
   }
 
   @override
@@ -55,16 +55,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     setState(() => _isSaving = true);
 
     final userProvider = context.read<UserProvider>();
-    final updatedUser = userProvider.user.copyWith(
-      fullName: name,
-      username: username,
-      phone: phone,
-      dateOfBirth: _dobController.text.trim().isNotEmpty
-          ? _dobController.text.trim()
-          : null,
-    );
+    final updatedFields = <String, dynamic>{
+      'full_name': name,
+      'username': username,
+      'phone': phone,
+    };
+    final dob = _dobController.text.trim();
+    if (dob.isNotEmpty) {
+      updatedFields['date_of_birth'] = dob;
+    }
 
-    await userProvider.updateUser(updatedUser);
+    await userProvider.updateProfile(updatedFields);
 
     if (mounted) {
       setState(() => _isSaving = false);
@@ -182,7 +183,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               alignment: Alignment.center,
               child: Text(
-                user.initials,
+                user?.initials ?? '?',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 28,
@@ -192,7 +193,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             const SizedBox(height: 10),
             Text(
-              user.email,
+              user?.email ?? '',
               style: const TextStyle(
                 fontSize: 13,
                 color: AppColors.textMuted,

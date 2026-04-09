@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../services/local_storage_service.dart';
 
 class AlertsScreen extends StatefulWidget {
   const AlertsScreen({super.key});
@@ -21,7 +20,6 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
   void _loadRecentSearches() {
     setState(() {
-      _recentSearches = LocalStorageService.getRecentSearches();
       if (_recentSearches.isEmpty) {
         _recentSearches = [
           {'title': 'UCD Belfield', 'subtitle': 'Route 46A · Yesterday'},
@@ -33,14 +31,12 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
   void _performSearch(String query) {
     if (query.trim().isEmpty) return;
-    
+
     final newSearch = {
       'title': query.trim(),
       'subtitle': 'Custom Route · Just now',
     };
-    
-    LocalStorageService.addRecentSearch(newSearch);
-    
+
     setState(() {
       // Remove any existing identical searches to prevent duplicates
       _recentSearches.removeWhere((s) => s['title'] == newSearch['title']);

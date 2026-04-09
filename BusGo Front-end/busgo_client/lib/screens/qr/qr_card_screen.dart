@@ -16,6 +16,9 @@ class QrCardScreen extends StatelessWidget {
         child: Consumer<UserProvider>(
           builder: (context, userProvider, _) {
             final user = userProvider.user;
+            if (user == null) {
+              return const Center(child: CircularProgressIndicator());
+            }
             final qrData = user.qrCode.isNotEmpty
                 ? user.qrCode
                 : 'BUSGO-${user.id}';

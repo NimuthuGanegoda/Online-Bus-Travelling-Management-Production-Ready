@@ -41,7 +41,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<BusProvider>().loadAll();
+      context.read<BusProvider>().loadAll(6.9271, 79.8612);
       context.read<TripProvider>().loadTripHistory();
 
       // Sync user from auth provider
@@ -149,7 +149,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        userProvider.user.fullName,
+                        userProvider.user?.fullName ?? 'User',
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,

@@ -18,6 +18,12 @@ dependencies:
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
   http: ^1.2.2
+  # ── New: Backend integration ──────────────────────────────
+  dio: ^5.4.3
+  flutter_secure_storage: ^9.2.2
+  supabase_flutter: ^2.5.6
+  connectivity_plus: ^6.0.3
+  pretty_dio_logger: ^1.4.0
 
 dev_dependencies:
   flutter_test:

@@ -3,8 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/trip_provider.dart';
-import '../../services/mock_data_service.dart';
-
 class DriverRatingScreen extends StatefulWidget {
   const DriverRatingScreen({super.key});
 
@@ -301,7 +299,10 @@ class _DriverRatingScreenState extends State<DriverRatingScreen> {
       alignment: WrapAlignment.center,
       spacing: 8,
       runSpacing: 8,
-      children: MockDataService.ratingTags.map((tag) {
+      children: const [
+        'Punctual', 'Safe Driving', 'Friendly', 'Clean Bus',
+        'Smooth Ride', 'Helpful', 'On Time', 'Professional',
+      ].map((tag) {
         final isSelected = tripProvider.selectedTags.contains(tag);
         return GestureDetector(
           onTap: () => tripProvider.toggleTag(tag),
@@ -383,11 +384,19 @@ class _DriverRatingScreenState extends State<DriverRatingScreen> {
           child: ElevatedButton(
             onPressed: () async {
               tripProvider.setRating(_starRating);
-              await tripProvider.submitRating(
-                routeNumber: '138',
-                driverName: 'Namal Fernando',
-                driverId: 'DRV-2841',
-              );
+              // tripId and busId come from the ongoing/last trip; use
+              // ongoingTrip if available, otherwise fall back to the most
+              // recent completed trip.
+              final trip = tripProvider.ongoingTrip
+                  ?? (tripProvider.tripHistory.isNotEmpty
+                      ? tripProvider.tripHistory.first
+                      : null);
+              if (trip?.id != null && trip?.busId != null) {
+                await tripProvider.submitRating(
+                  tripId: trip!.id!,
+                  busId:  trip.busId!,
+                );
+              }
               if (mounted) setState(() => _submitted = true);
             },
             style: ElevatedButton.styleFrom(

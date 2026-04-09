@@ -68,7 +68,7 @@ class _LiveMapScreenState extends State<LiveMapScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<BusProvider>();
-      if (provider.nearbyBuses.isEmpty) provider.loadAll();
+      if (provider.nearbyBuses.isEmpty) provider.loadAll(6.9271, 79.8612);
     });
 
     _fetchRealRoutes();

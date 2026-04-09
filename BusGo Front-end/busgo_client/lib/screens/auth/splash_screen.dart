@@ -38,17 +38,17 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _initAndNavigate() async {
     final auth = context.read<AuthProvider>();
-    // Seed default user on first run
-    await auth.seedDefaultUser();
-    // Check existing session
+
+    // Check stored JWT tokens; if valid, fetch /users/me
     await auth.checkSession();
 
+    // Minimum splash display time
     await Future.delayed(const Duration(seconds: 2));
 
     if (!mounted) return;
 
     if (auth.isLoggedIn && auth.currentUser != null) {
-      // Set user data in UserProvider
+      // Sync user into UserProvider so all screens have access
       context.read<UserProvider>().setUser(auth.currentUser!);
       context.go('/home');
     } else {
@@ -87,13 +87,11 @@ class _SplashScreenState extends State<SplashScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Spacer(flex: 2),
-                  // Logo image
                   Image.asset(
                     'assets/images/buslogo.jpeg',
                     width: 160,
                     height: 160,
                     errorBuilder: (context, error, stackTrace) {
-                      // Fallback if image not found
                       return Container(
                         width: 100,
                         height: 100,
@@ -146,7 +144,6 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                   ),
                   const Spacer(flex: 3),
-                  // Loading dots
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(3, (index) {

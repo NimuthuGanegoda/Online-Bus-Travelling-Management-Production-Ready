@@ -302,22 +302,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
         ),
         const SizedBox(height: 6),
-        // Show the simulated PIN as a hint
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFFE8F5E9),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            'Demo PIN: ${auth.generatedPin}',
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppColors.success,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
         const SizedBox(height: 16),
         // PIN boxes
         Row(

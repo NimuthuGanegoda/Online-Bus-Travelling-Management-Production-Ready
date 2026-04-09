@@ -22,7 +22,7 @@ class _RouteSearchScreenState extends State<RouteSearchScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<BusProvider>().loadAll();
+      context.read<BusProvider>().loadAll(6.9271, 79.8612);
       context.read<TripProvider>().loadTripHistory();
     });
     _destinationController.addListener(_onSearchChanged);

@@ -3,8 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/emergency_provider.dart';
-import '../../services/mock_data_service.dart';
-
 class EmergencyScreen extends StatefulWidget {
   const EmergencyScreen({super.key});
 
@@ -137,7 +135,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
               const SizedBox(height: 12),
 
               // Emergency type options
-              ...List.generate(MockDataService.emergencyTypes.length,
+              ...List.generate(EmergencyProvider.displayTypes.length,
                   (index) {
                 final isSelected = emergency.selectedType == index;
                 return GestureDetector(
@@ -185,7 +183,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
                         ),
                         const SizedBox(width: 10),
                         Text(
-                          MockDataService.emergencyTypes[index],
+                          EmergencyProvider.displayTypes[index],
                           style: const TextStyle(
                             fontSize: 12,
                             color: Color(0xFF333333),
@@ -345,7 +343,7 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Emergency type: ${MockDataService.emergencyTypes[emergency.selectedType]}',
+            'Emergency type: ${EmergencyProvider.displayTypes[emergency.selectedType]}',
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
           ),
