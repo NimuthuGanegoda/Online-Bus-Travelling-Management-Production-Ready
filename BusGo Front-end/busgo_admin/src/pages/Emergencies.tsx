@@ -1,22 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  MapPin,
-  Bus,
-  CheckCircle,
-  Eye,
-  Calendar,
-  AlertTriangle,
-  ShieldAlert,
-  Siren,
-  Wrench,
-  Activity,
-  Clock,
-  Filter,
-  ChevronRight,
-  X,
+  MapPin, Bus, CheckCircle, Eye, Calendar, AlertTriangle,
+  ShieldAlert, Siren, Wrench, Activity, Clock, Filter, ChevronRight, X,
 } from 'lucide-react';
-import { emergencyAlerts as initialAlerts } from '../data/mockData';
+import { fetchEmergencies, updateEmergencyStatus, deployBusToEmergency } from '../services/emergency.service';
 import type { EmergencyAlert } from '../types';
 import './Emergencies.css';
 
@@ -35,11 +23,19 @@ const statusConfig: Record<string, { label: string; color: string; bg: string }>
 
 export default function Emergencies() {
   const navigate = useNavigate();
-  const [alerts, setAlerts] = useState<EmergencyAlert[]>(initialAlerts);
+  const [alerts, setAlerts] = useState<EmergencyAlert[]>([]);
+  const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [detailAlert, setDetailAlert] = useState<EmergencyAlert | null>(null);
   const [deployedMsg, setDeployedMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchEmergencies({ page_size: 100 })
+      .then(setAlerts)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
 
   const totalCount = alerts.length;
   const newCount = alerts.filter((a) => a.status === 'NEW').length;
@@ -56,27 +52,34 @@ export default function Emergencies() {
     navigate('/admin/fleet-map');
   };
 
-  const handleDeployBus = (alert: EmergencyAlert) => {
-    setAlerts((prev) =>
-      prev.map((a) =>
-        a.id === alert.id ? { ...a, status: 'RESPONDED' as const, timeAgo: 'Just now' } : a
-      )
-    );
-    setDeployedMsg(`Standby bus deployed to ${alert.location} for ${alert.title}`);
-    setTimeout(() => setDeployedMsg(null), 4000);
+  const handleDeployBus = async (alert: EmergencyAlert) => {
+    try {
+      const updated = await deployBusToEmergency(alert.id);
+      setAlerts((prev) => prev.map((a) => (a.id === alert.id ? updated : a)));
+      setDeployedMsg(`Standby bus deployed to ${alert.location} for ${alert.title}`);
+      setTimeout(() => setDeployedMsg(null), 4000);
+    } catch {
+      setDeployedMsg('Failed to deploy bus. Please try again.');
+      setTimeout(() => setDeployedMsg(null), 4000);
+    }
   };
 
-  const handleResolve = (alert: EmergencyAlert) => {
-    setAlerts((prev) =>
-      prev.map((a) =>
-        a.id === alert.id ? { ...a, status: 'RESOLVED' as const, timeAgo: 'Resolved' } : a
-      )
-    );
+  const handleResolve = async (alert: EmergencyAlert) => {
+    try {
+      const updated = await updateEmergencyStatus(alert.id, 'resolved');
+      setAlerts((prev) => prev.map((a) => (a.id === alert.id ? updated : a)));
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleViewDetails = (alert: EmergencyAlert) => {
     setDetailAlert(alert);
   };
+
+  if (loading) {
+    return <div className="emergencies-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', fontSize: '14px', color: '#6b7280' }}>Loading alerts…</div>;
+  }
 
   return (
     <div className="emergencies-page">

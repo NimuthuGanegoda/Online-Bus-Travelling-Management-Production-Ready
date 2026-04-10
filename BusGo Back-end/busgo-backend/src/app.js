@@ -21,6 +21,18 @@ import emergencyRoutes     from './modules/emergency/emergency.routes.js';
 import notificationsRoutes from './modules/notifications/notifications.routes.js';
 import searchesRoutes      from './modules/searches/searches.routes.js';
 
+// Admin routers
+import adminAuthRoutes          from './modules/admin/auth/admin.auth.routes.js';
+import adminDashboardRoutes     from './modules/admin/dashboard/admin.dashboard.routes.js';
+import adminBusesRoutes         from './modules/admin/buses/admin.buses.routes.js';
+import adminDriversRoutes       from './modules/admin/drivers/admin.drivers.routes.js';
+import adminPassengersRoutes    from './modules/admin/passengers/admin.passengers.routes.js';
+import adminAdminsRoutes        from './modules/admin/admins/admin.admins.routes.js';
+import adminEmergencyRoutes     from './modules/admin/emergency/admin.emergency.routes.js';
+import adminAuditRoutes         from './modules/admin/audit/admin.audit.routes.js';
+import adminNotificationsRoutes from './modules/admin/notifications/admin.notifications.routes.js';
+import adminRoutesRoutes        from './modules/admin/routes/admin.routes.routes.js';
+
 const app = express();
 
 // ── Security headers ──────────────────────────────────────────────────────────
@@ -80,6 +92,18 @@ app.use('/api/ratings',        ratingsRoutes);
 app.use('/api/emergency',      emergencyRoutes);
 app.use('/api/notifications',  notificationsRoutes);
 app.use('/api/searches/recent', searchesRoutes);
+
+// ── Admin API Routes (/api/admin/*) ───────────────────────────
+app.use('/api/admin/auth',          adminAuthRoutes);
+app.use('/api/admin/dashboard',     adminDashboardRoutes);
+app.use('/api/admin/buses',         adminBusesRoutes);
+app.use('/api/admin/drivers',       adminDriversRoutes);
+app.use('/api/admin/passengers',    adminPassengersRoutes);
+app.use('/api/admin/admins',        adminAdminsRoutes);
+app.use('/api/admin/emergency',     adminEmergencyRoutes);
+app.use('/api/admin/audit',         adminAuditRoutes);
+app.use('/api/admin/notifications', adminNotificationsRoutes);
+app.use('/api/admin/routes',        adminRoutesRoutes);
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use(notFoundHandler);

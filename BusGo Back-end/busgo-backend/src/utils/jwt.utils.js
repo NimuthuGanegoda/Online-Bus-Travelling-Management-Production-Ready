@@ -84,3 +84,52 @@ export function verifyResetToken(token) {
     audience: 'busgo-reset',
   });
 }
+
+// ── Admin tokens (reuse same secrets, separate audience) ──────
+
+/**
+ * Sign a short-lived admin access token.
+ * @param {{ id: string, email: string, role: string }} payload
+ */
+export function signAdminAccessToken(payload) {
+  return jwt.sign(payload, env.JWT_ACCESS_SECRET, {
+    expiresIn: env.JWT_ACCESS_EXPIRES_IN,
+    issuer: 'busgo-api',
+    audience: 'busgo-admin',
+  });
+}
+
+/**
+ * Sign a long-lived admin refresh token.
+ * @param {{ id: string }} payload
+ */
+export function signAdminRefreshToken(payload) {
+  return jwt.sign(payload, env.JWT_REFRESH_SECRET, {
+    expiresIn: env.JWT_REFRESH_EXPIRES_IN,
+    issuer: 'busgo-api',
+    audience: 'busgo-admin',
+  });
+}
+
+/**
+ * Verify an admin access token.
+ * @param {string} token
+ * @returns {{ id: string, email: string, role: string, iat: number, exp: number }}
+ */
+export function verifyAdminAccessToken(token) {
+  return jwt.verify(token, env.JWT_ACCESS_SECRET, {
+    issuer: 'busgo-api',
+    audience: 'busgo-admin',
+  });
+}
+
+/**
+ * Verify an admin refresh token.
+ * @param {string} token
+ */
+export function verifyAdminRefreshToken(token) {
+  return jwt.verify(token, env.JWT_REFRESH_SECRET, {
+    issuer: 'busgo-api',
+    audience: 'busgo-admin',
+  });
+}

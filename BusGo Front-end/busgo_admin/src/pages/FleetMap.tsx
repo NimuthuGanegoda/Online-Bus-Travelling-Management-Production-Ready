@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { RefreshCw, Crosshair, Bus, User } from 'lucide-react';
-import { activeBuses } from '../data/mockData';
+import { fetchAllBuses } from '../services/buses.service';
 import type { Bus as BusType } from '../types';
 import './FleetMap.css';
 
@@ -21,22 +21,22 @@ function createBusIcon(passengers: number, capacity: number, status: string) {
   });
 }
 
-const allBuses: BusType[] = [
-  ...activeBuses,
-  { id: 'BUS-74-D', registration: 'WP-XX-7400', route: 74, driver: 'Nimal P.', passengers: 20, capacity: 50, status: 'Active', speed: 40, lat: 6.89, lng: 79.92, lastUpdated: '14:30' },
-  { id: 'BUS-24-E', registration: 'WP-YY-2400', route: 24, driver: 'Ajith K.', passengers: 38, capacity: 50, status: 'Active', speed: 22, lat: 6.88, lng: 79.96, lastUpdated: '14:31' },
-  { id: 'BUS-55-F', registration: 'WP-ZZ-5500', route: 55, driver: 'Sunil R.', passengers: 45, capacity: 50, status: 'Active', speed: 15, lat: 6.87, lng: 80.02, lastUpdated: '14:29' },
-  { id: 'BUS-110-G', registration: 'SP-AA-1100', route: 110, driver: 'Kumara S.', passengers: 12, capacity: 50, status: 'Active', speed: 50, lat: 6.82, lng: 79.88, lastUpdated: '14:28' },
-  { id: 'BUS-76-H', registration: 'SP-BB-7600', route: 76, driver: 'Lalith M.', passengers: 28, capacity: 50, status: 'Active', speed: 32, lat: 6.82, lng: 79.95, lastUpdated: '14:27' },
-  { id: 'BUS-92-I', registration: 'CP-CC-9200', route: 92, driver: 'Rohan D.', passengers: 35, capacity: 50, status: 'Active', speed: 18, lat: 6.82, lng: 80.01, lastUpdated: '14:26' },
-  { id: 'BUS-103-J', registration: 'CP-DD-1030', route: 103, driver: 'Asanka J.', passengers: 22, capacity: 50, status: 'Active', speed: 45, lat: 6.80, lng: 80.08, lastUpdated: '14:25' },
-];
-
 export default function FleetMap() {
-  const [selectedBus, setSelectedBus] = useState<BusType>(allBuses[0]);
+  const [allBuses, setAllBuses] = useState<BusType[]>([]);
+  const [selectedBus, setSelectedBus] = useState<BusType | null>(null);
   const [routeFilter, setRouteFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [crowdFilter, setCrowdFilter] = useState('all');
+
+  useEffect(() => {
+    fetchAllBuses()
+      .then((buses) => {
+        const withGps = buses.filter((b) => b.lat && b.lng);
+        setAllBuses(withGps);
+        if (withGps.length > 0) setSelectedBus(withGps[0]);
+      })
+      .catch(console.error);
+  }, []);
 
   const getCrowdLevel = (bus: BusType) => {
     const ratio = bus.passengers / bus.capacity;
@@ -51,8 +51,8 @@ export default function FleetMap() {
     return true;
   });
 
-  const crowdPercent = Math.round((selectedBus.passengers / selectedBus.capacity) * 100);
-  const crowdLabel = getCrowdLevel(selectedBus);
+  const crowdPercent = selectedBus ? Math.round((selectedBus.passengers / selectedBus.capacity) * 100) : 0;
+  const crowdLabel = selectedBus ? getCrowdLevel(selectedBus) : 'low';
 
   return (
     <div className="fleet-map-page">
@@ -114,9 +114,15 @@ export default function FleetMap() {
         </div>
 
         <div className="bus-detail-panel">
+          {!selectedBus ? (
+            <div style={{ padding: '32px', textAlign: 'center', color: '#6b7280', fontSize: '13px' }}>
+              {allBuses.length === 0 ? 'No buses with GPS data' : 'Click a bus to view details'}
+            </div>
+          ) : (
+          <>
           <div className="bus-detail-header">
-            <h2>{selectedBus.id.replace('BUS-', 'Bus #')} — Selected</h2>
-            <p>Route {selectedBus.route} · Last updated {selectedBus.lastUpdated}</p>
+            <h2>{selectedBus.id} — Selected</h2>
+            <p>Route {selectedBus.route} · Last updated {selectedBus.lastUpdated ?? '—'}</p>
           </div>
 
           <div className="bus-detail-rows">
@@ -126,7 +132,7 @@ export default function FleetMap() {
             </div>
             <div className="detail-row">
               <span className="detail-label">ROUTE</span>
-              <span className="detail-value">{selectedBus.route} — Fort — Homagama</span>
+              <span className="detail-value">Route {selectedBus.route}</span>
             </div>
             <div className="detail-row">
               <span className="detail-label">DRIVER</span>
@@ -134,11 +140,11 @@ export default function FleetMap() {
             </div>
             <div className="detail-row">
               <span className="detail-label">SPEED</span>
-              <span className="detail-value">{selectedBus.speed} km/h</span>
+              <span className="detail-value">{selectedBus.speed ?? 0} km/h</span>
             </div>
             <div className="detail-row">
               <span className="detail-label">STATUS</span>
-              <span className={`detail-status ${selectedBus.status.toLowerCase()}`}>
+              <span className={`detail-status ${selectedBus.status.toLowerCase().replace(' ', '-')}`}>
                 <span className="status-indicator"></span>
                 {selectedBus.status}
               </span>
@@ -149,10 +155,7 @@ export default function FleetMap() {
             </div>
             <div className="passenger-bar-wrap">
               <div className="passenger-bar">
-                <div
-                  className={`passenger-bar-fill ${crowdLabel}`}
-                  style={{ width: `${crowdPercent}%` }}
-                ></div>
+                <div className={`passenger-bar-fill ${crowdLabel}`} style={{ width: `${crowdPercent}%` }}></div>
               </div>
               <span className={`crowd-label ${crowdLabel}`}>
                 {crowdLabel.charAt(0).toUpperCase() + crowdLabel.slice(1)} — {crowdPercent}%
@@ -167,6 +170,8 @@ export default function FleetMap() {
               <span className="detail-value bold">{selectedBus.eta ? `${selectedBus.eta} minutes` : 'N/A'}</span>
             </div>
           </div>
+          </>
+          )}
 
           <div className="bus-detail-actions">
             <button className="detail-action-btn primary">
