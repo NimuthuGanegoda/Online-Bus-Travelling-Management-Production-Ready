@@ -20,7 +20,8 @@ export function mapBus(b: any): Bus {
   const capacity = b.capacity ?? 50;
 
   return {
-    id:           b.bus_number ?? b.id,
+    _uuid:        b.id,                  // real UUID for API calls
+    id:           b.bus_number ?? b.id,  // display ID shown in table
     registration: b.registration ?? '—',
     route:        Number(b.bus_routes?.route_number ?? b.route_number ?? 0),
     driver:       b.drivers?.full_name ?? b.driver_name ?? '—',

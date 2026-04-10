@@ -1,5 +1,6 @@
 export interface Bus {
-  id: string;
+  id: string;      // bus_number for display (e.g. AA-001)
+  _uuid?: string;  // real UUID used for API calls
   registration: string;
   route: number;
   driver: string;

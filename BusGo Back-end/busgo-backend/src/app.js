@@ -32,6 +32,7 @@ import adminEmergencyRoutes     from './modules/admin/emergency/admin.emergency.
 import adminAuditRoutes         from './modules/admin/audit/admin.audit.routes.js';
 import adminNotificationsRoutes from './modules/admin/notifications/admin.notifications.routes.js';
 import adminRoutesRoutes        from './modules/admin/routes/admin.routes.routes.js';
+import adminStopsRoutes         from './modules/admin/stops/admin.stops.routes.js';
 
 const app = express();
 
@@ -104,6 +105,7 @@ app.use('/api/admin/emergency',     adminEmergencyRoutes);
 app.use('/api/admin/audit',         adminAuditRoutes);
 app.use('/api/admin/notifications', adminNotificationsRoutes);
 app.use('/api/admin/routes',        adminRoutesRoutes);
+app.use('/api/admin/stops',         adminStopsRoutes);
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use(notFoundHandler);

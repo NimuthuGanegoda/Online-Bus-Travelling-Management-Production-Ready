@@ -177,6 +177,7 @@
 }
 .routes-action-btn:hover { opacity: 0.8; }
 .routes-action-btn.blue   { background: #eff6ff; color: #1d4ed8; }
+.routes-action-btn.purple { background: #f5f3ff; color: #7c3aed; }
 .routes-action-btn.orange { background: #fff7ed; color: #c2410c; }
 .routes-action-btn.green  { background: #f0fdf4; color: #15803d; }
 .routes-action-btn.red    { background: #fef2f2; color: #dc2626; }

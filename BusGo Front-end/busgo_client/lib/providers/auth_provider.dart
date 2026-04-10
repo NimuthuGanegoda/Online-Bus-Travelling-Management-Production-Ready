@@ -30,18 +30,17 @@ class AuthProvider extends ChangeNotifier {
 
   /// Check stored tokens on app start; fetch /users/me if valid
   Future<void> checkSession() async {
-    final accessToken = await _tokenService.getAccessToken();
-    if (accessToken == null) {
-      _isLoggedIn = false;
-      notifyListeners();
-      return;
-    }
     try {
+      final accessToken = await _tokenService.getAccessToken();
+      if (accessToken == null) {
+        _isLoggedIn = false;
+        notifyListeners();
+        return;
+      }
       _currentUser = await _authService.getMe();
       _isLoggedIn = true;
     } catch (_) {
-      // Token invalid or network error — try refresh inside ApiClient interceptor;
-      // if that also fails, tokens are cleared and user stays logged out.
+      // Token invalid, storage error, or network error — stay logged out.
       _isLoggedIn = false;
     }
     notifyListeners();

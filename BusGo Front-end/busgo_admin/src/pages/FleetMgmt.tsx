@@ -17,7 +17,7 @@ export default function FleetMgmt() {
   const [routeFilter, setRouteFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [editBus, setEditBus] = useState<BusType | null>(null);
-  const [editForm, setEditForm] = useState({ driver: '', route: '' });
+  const [editForm, setEditForm] = useState({ driver_name: '', registration: '', route_id: '' });
   const [toast, setToast] = useState<string | null>(null);
   const [showRegister, setShowRegister] = useState(false);
   const [routes, setRoutes] = useState<{ id: string; route_number: number; route_name: string }[]>([]);
@@ -95,19 +95,22 @@ export default function FleetMgmt() {
 
   const handleEdit = (bus: BusType) => {
     setEditBus(bus);
-    setEditForm({ driver: bus.driver, route: String(bus.route) });
+    setEditForm({ driver_name: bus.driver, registration: bus.registration === '—' ? '' : bus.registration, route_id: '' });
   };
 
-  const handleEditSave = () => {
+  const handleEditSave = async () => {
     if (!editBus) return;
-    setBuses((prev) =>
-      prev.map((b) =>
-        b.id === editBus.id
-          ? { ...b, driver: editForm.driver, route: Number(editForm.route) }
-          : b
-      )
-    );
-    showToast(`${editBus.id} updated successfully`);
+    try {
+      const updated = await updateBusAssignment(editBus._uuid ?? editBus.id, {
+        driver_name:  editForm.driver_name || undefined,
+        registration: editForm.registration || undefined,
+        route_id:     editForm.route_id || undefined,
+      });
+      setBuses((prev) => prev.map((b) => (b.id === editBus.id ? updated : b)));
+      showToast(`${editBus.id} updated successfully`);
+    } catch {
+      showToast('Failed to update bus');
+    }
     setEditBus(null);
   };
 
@@ -117,7 +120,7 @@ export default function FleetMgmt() {
 
   const handleRecall = async (bus: BusType) => {
     try {
-      await updateBusStatus(bus.id, 'standby');
+      await updateBusStatus(bus._uuid ?? bus.id, 'standby');
       setBuses((prev) => prev.filter((b) => b.id !== bus.id));
       showToast(`${bus.id} has been recalled to depot`);
     } catch {
@@ -127,7 +130,7 @@ export default function FleetMgmt() {
 
   const handleRepair = async (bus: BusType) => {
     try {
-      const updated = await updateBusStatus(bus.id, 'in_repair');
+      const updated = await updateBusStatus(bus._uuid ?? bus.id, 'in_repair');
       setBuses((prev) => prev.map((b) => (b.id === bus.id ? updated : b)));
       showToast(`${bus.id} sent to repair`);
     } catch {
@@ -267,25 +270,35 @@ export default function FleetMgmt() {
               </div>
               <div className="fleet-modal-field">
                 <label>Registration</label>
-                <input type="text" value={editBus.registration} disabled className="fleet-modal-input disabled" />
-              </div>
-              <div className="fleet-modal-field">
-                <label>Driver</label>
                 <input
                   type="text"
-                  value={editForm.driver}
-                  onChange={(e) => setEditForm((f) => ({ ...f, driver: e.target.value }))}
+                  value={editForm.registration}
+                  onChange={(e) => setEditForm((f) => ({ ...f, registration: e.target.value }))}
+                  className="fleet-modal-input"
+                  placeholder="e.g. WP CAB-1234"
+                />
+              </div>
+              <div className="fleet-modal-field">
+                <label>Driver Name</label>
+                <input
+                  type="text"
+                  value={editForm.driver_name}
+                  onChange={(e) => setEditForm((f) => ({ ...f, driver_name: e.target.value }))}
                   className="fleet-modal-input"
                 />
               </div>
               <div className="fleet-modal-field">
-                <label>Route</label>
-                <input
-                  type="number"
-                  value={editForm.route}
-                  onChange={(e) => setEditForm((f) => ({ ...f, route: e.target.value }))}
+                <label>Reassign Route</label>
+                <select
+                  value={editForm.route_id}
+                  onChange={(e) => setEditForm((f) => ({ ...f, route_id: e.target.value }))}
                   className="fleet-modal-input"
-                />
+                >
+                  <option value="">— keep current route —</option>
+                  {routes.map((r) => (
+                    <option key={r.id} value={r.id}>Route {r.route_number} — {r.route_name}</option>
+                  ))}
+                </select>
               </div>
               <div className="fleet-modal-actions">
                 <button className="fleet-modal-btn cancel" onClick={() => setEditBus(null)}>Cancel</button>

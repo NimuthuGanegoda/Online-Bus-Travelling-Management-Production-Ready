@@ -35,7 +35,7 @@ export async function updateBusStatus(busId: string, status: string): Promise<Bu
 
 export async function updateBusAssignment(
   busId: string,
-  payload: { driver?: string; route?: string | number },
+  payload: { driver_name?: string; registration?: string; route_id?: string | null },
 ): Promise<Bus> {
   const { data: res } = await api.patch(`/buses/${busId}`, payload);
   return mapBus(res.data);

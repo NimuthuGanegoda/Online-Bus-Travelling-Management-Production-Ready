@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, X, CheckCircle, Route } from 'lucide-react';
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, X, CheckCircle, Route, MapPin } from 'lucide-react';
 import {
   fetchAdminRoutes, createRoute, updateRoute, toggleRouteStatus, deleteRoute,
   type Route as RouteType,
 } from '../services/routes.service';
+import StopsPanel from '../components/StopsPanel';
 import './RoutesPage.css';
 
 const BLANK_FORM = { route_number: '', route_name: '', origin: '', destination: '', color: '#1565C0' };
@@ -20,6 +21,7 @@ export default function RoutesPage() {
   const [deleteTarget, setDeleteTarget] = useState<RouteType | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [searchQ, setSearchQ] = useState('');
+  const [stopsRoute, setStopsRoute] = useState<RouteType | null>(null);
 
   useEffect(() => {
     load();
@@ -283,6 +285,11 @@ export default function RoutesPage() {
         />
       </div>
 
+      {/* Bus Stops Side Panel */}
+      {stopsRoute && (
+        <StopsPanel route={stopsRoute} onClose={() => setStopsRoute(null)} />
+      )}
+
       {/* Table */}
       <div className="routes-table-wrap">
         <table className="routes-table">
@@ -333,6 +340,9 @@ export default function RoutesPage() {
                     <div className="routes-action-btns">
                       <button className="routes-action-btn blue" onClick={() => openEdit(r)}>
                         <Pencil size={14} /> Edit
+                      </button>
+                      <button className="routes-action-btn purple" onClick={() => setStopsRoute(r)}>
+                        <MapPin size={14} /> Bus Stops
                       </button>
                       <button
                         className={`routes-action-btn ${r.is_active ? 'orange' : 'green'}`}
