@@ -1,18 +1,31 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import './Login.css';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/admin/dashboard');
+    setError('');
+    setLoading(true);
+    try {
+      await login(username.trim(), password);
+      navigate('/admin/dashboard');
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? 'Invalid email or password');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -132,8 +145,14 @@ export default function Login() {
                 <a href="#" className="forgot-link">Forgot password?</a>
               </div>
 
-              <button type="submit" className="signin-btn">
-                <span>Sign In</span>
+              {error && (
+                <div style={{ color: '#ef4444', fontSize: '13px', marginBottom: '8px', textAlign: 'center' }}>
+                  {error}
+                </div>
+              )}
+
+              <button type="submit" className="signin-btn" disabled={loading}>
+                <span>{loading ? 'Signing in…' : 'Sign In'}</span>
                 <ArrowRight size={20} />
               </button>
             </form>

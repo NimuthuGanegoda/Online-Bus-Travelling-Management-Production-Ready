@@ -20,7 +20,8 @@ export interface StandbyBus {
 }
 
 export interface Driver {
-  id: string;
+  id: string;       // driver_code for display (e.g. DRV-001)
+  _uuid?: string;   // real UUID used for API calls
   name: string;
   rating: number;
   email: string;
@@ -81,7 +82,7 @@ export interface AuditLog {
   id: string;
   timestamp: string;
   admin: string;
-  action: 'RESOLVE' | 'UPDATE' | 'CREATE' | 'DELETE' | 'LOGIN';
+  action: 'RESOLVE' | 'UPDATE' | 'CREATE' | 'DELETE' | 'LOGIN' | 'LOGOUT' | 'APPROVE' | 'REJECT' | 'DEPLOY' | 'SUSPEND';
   entity: string;
   entityId: string;
   details: string;
