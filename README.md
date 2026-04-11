@@ -2,10 +2,6 @@
 
 This repository contains the BusGo ecosystem: backend APIs, web admin frontend, Flutter mobile apps, ML experiments, and a payment demo.
 
-## Academic Supervision
-
-This project was guided and supervised by **Ann Roshani Appuhamy**. This project is a part of an undergraduate coursework.
-
 ## Organized Structure
 
 - `apps/backend/busgo-backend/`
@@ -84,3 +80,7 @@ npm start
 - Each project is independently versioned and configured.
 - Keep environment secrets in local `.env` files and never commit them.
 - See each project's own README for project-specific setup details.
+
+## Academic Supervision
+
+This project was guided and supervised by **Ann Roshani Appuhamy**. This project is a part of an undergraduate coursework.
