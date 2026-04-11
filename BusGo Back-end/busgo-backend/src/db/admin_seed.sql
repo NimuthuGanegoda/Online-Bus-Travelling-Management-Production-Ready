@@ -16,7 +16,7 @@ VALUES
     'Admin Master',
     'admin@busgo.lk',
     '+94770000001',
-    '$2b$12$LQv3c1yqBWVHxkd0LQ1Src.4kBnRUdGGmCl5Z6GjvH0yW6YqBJpJy',
+    '$2a$12$Nb34.Tm0/wQAAsQ8jqZpBunKKNuLiH9e.6W.xdrzEL78l8fuS3nxq',
     'super_admin',
     'active'
   ),
@@ -25,7 +25,7 @@ VALUES
     'Kasun Rajapaksha',
     'kasun@busgo.lk',
     '+94710000002',
-    '$2b$12$LQv3c1yqBWVHxkd0LQ1Src.4kBnRUdGGmCl5Z6GjvH0yW6YqBJpJy',
+    '$2a$12$Nb34.Tm0/wQAAsQ8jqZpBunKKNuLiH9e.6W.xdrzEL78l8fuS3nxq',
     'admin',
     'active'
   ),
@@ -34,7 +34,7 @@ VALUES
     'Dilani Wickramasinghe',
     'dilani@busgo.lk',
     '+94760000003',
-    '$2b$12$LQv3c1yqBWVHxkd0LQ1Src.4kBnRUdGGmCl5Z6GjvH0yW6YqBJpJy',
+    '$2a$12$Nb34.Tm0/wQAAsQ8jqZpBunKKNuLiH9e.6W.xdrzEL78l8fuS3nxq',
     'moderator',
     'active'
   ),
@@ -43,7 +43,7 @@ VALUES
     'Pradeep Gunasekara',
     'pradeep@busgo.lk',
     '+94750000004',
-    '$2b$12$LQv3c1yqBWVHxkd0LQ1Src.4kBnRUdGGmCl5Z6GjvH0yW6YqBJpJy',
+    '$2a$12$Nb34.Tm0/wQAAsQ8jqZpBunKKNuLiH9e.6W.xdrzEL78l8fuS3nxq',
     'admin',
     'inactive'
   )
