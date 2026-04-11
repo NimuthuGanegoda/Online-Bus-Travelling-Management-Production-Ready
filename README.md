@@ -19,7 +19,7 @@ Welcome to the **BusGo** ecosystem, a comprehensive suite of applications design
 ## 🌟 Project Overview
 
 The BusGo system provides a seamless experience for passengers, drivers, and administrators:
-- **🚀 Backend API:** High-performance Node.js and Express server.
+- **🚀 Backend Server:** High-performance Node.js and Express API.
 - **📱 Mobile Apps:** Dedicated Flutter applications for tracking and trip management.
 - **🌐 Admin Dashboard:** Modern React web application for system oversight.
 - **🤖 AI Models:** Machine learning for ETA prediction and emergency triage.
@@ -30,8 +30,8 @@ The BusGo system provides a seamless experience for passengers, drivers, and adm
 
 The project is organized into logical domains to ensure clarity and scalability:
 
-### 1. Core Backend (`apps/backend/`)
-The engine of the system, built with **Express.js** and **Supabase (PostgreSQL)**. It handles authentication, real-time tracking, and trip management.
+### 1. Core Backend Server (`apps/backend/`)
+The engine of the system, built with **Express.js** and **Supabase (PostgreSQL)**. This is the central hub for authentication, real-time tracking, and trip management.
 - **Key Features:** JWT security, Role-based Access Control (RBAC), and Real-time updates.
 
 ### 2. Intelligent Layer (`ai-models/`)
@@ -40,7 +40,7 @@ The **Neo** engine provides predictive intelligence.
 - **ETA Estimation:** Traffic-aware arrival predictions.
 - **Emergency Triage:** Automated priority filtering for incidents.
 
-### 3. Client Interface (`apps/mobile/` & `apps/frontend/`)
+### 3. Client Interface Applications (`apps/mobile/` & `apps/frontend/`)
 A suite of **Flutter** and **React** applications tailored for each user role:
 - **Passenger App:** Route finding, tracking, and seat booking.
 - **Driver App:** Trip updates and passenger management.
@@ -71,7 +71,7 @@ cd Online-Bus-Travelling-Management-Production-Ready
 ### 2️⃣ Component Setup
 Navigate to each sub-directory to set up the individual services:
 
-- **Backend:** `cd apps/backend/busgo-backend && npm install`
+- **Backend Server:** `cd apps/backend/busgo-backend && npm install`
 - **Admin Dashboard:** `cd apps/frontend/busgo_admin && npm install`
 - **Mobile Apps:** `cd apps/mobile/busgo_client && flutter pub get`
 
@@ -86,7 +86,7 @@ Navigate to each sub-directory to set up the individual services:
 ```text
 Online-Bus-Travelling-Management-Production-Ready/
 ├── 📂 apps/
-│   ├── 📂 backend/        # Express.js API & Database logic
+│   ├── 📂 backend/        # Core Backend Server (Express.js API)
 │   ├── 📂 frontend/       # React Admin Dashboard
 │   └── 📂 mobile/         # Flutter Client & Driver Apps
 ├── 📂 ai-models/          # Neo Engine (ML Models)
