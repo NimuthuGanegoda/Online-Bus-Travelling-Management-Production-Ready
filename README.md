@@ -1,4 +1,4 @@
-# 🚌 BusGo: Online Bus Travelling Management - 
+# 🚌 BusGo: Online Bus Travelling Management
 
 ![Project Status](https://img.shields.io/badge/Status-Production--Ready-brightgreen?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
@@ -26,62 +26,70 @@ The BusGo system provides a seamless experience for passengers, drivers, and adm
 
 ---
 
-## 🛠️ Technology Stack & Build Process
+## 🏗️ System Architecture
 
-This project was crafted with precision using an elite selection of tools:
+The project is organized into logical domains to ensure clarity and scalability:
 
-### 🎨 Design & Frontend
-![Figma](https://img.shields.io/badge/figma-%23F24E1E.svg?style=for-the-badge&logo=figma&logoColor=white)
-![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white)
-![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)
-![TypeScript](https://img.shields.io/badge/typescript-%23007acc.svg?style=for-the-badge&logo=typescript&logoColor=white)
+### 1. Core Backend (`apps/backend/`)
+The engine of the system, built with **Express.js** and **Supabase (PostgreSQL)**. It handles authentication, real-time tracking, and trip management.
+- **Key Features:** JWT security, Role-based Access Control (RBAC), and Real-time updates.
 
-### ⚙️ Backend & Infrastructure
-![NodeJS](https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white)
-![Express.js](https://img.shields.io/badge/express.js-%23404d59.svg?style=for-the-badge&logo=express&logoColor=%2361DAFB)
-![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/postgres-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white)
+### 2. Intelligent Layer (`ai-models/`)
+The **Neo** engine provides predictive intelligence.
+- **Driver Rating:** Sentiment analysis on multi-language reviews.
+- **ETA Estimation:** Traffic-aware arrival predictions.
+- **Emergency Triage:** Automated priority filtering for incidents.
 
-### 🤖 Development Tools
-![Claude AI](https://img.shields.io/badge/Claude%20AI-D97757?style=for-the-badge&logo=anthropic&logoColor=white)
-![VS Code](https://img.shields.io/badge/Visual%20Studio%20Code-0078d7.svg?style=for-the-badge&logo=visual-studio-code&logoColor=white)
-
----
-
-## 🤖 Machine Learning Intelligence (Neo)
-
-The **Neo** engine powers the system's intelligence through three specialized, independently deployable models:
-
-- **⭐ Driver Rating Predictor (NLP):** A LightGBM pipeline analyzing multi-language reviews (English/Sinhala/Mixed) to provide calibrated scores (1-10) adjusted for real-world context like peak traffic and weather.
-- **⏳ ETA Estimator (v4.0):** An optimized regression model designed for Colombo's urban routes, utilizing temporal encoding and real-time traffic logic for precise stop-level arrival predictions.
-- **🚨 Emergency Triage System:** A two-stage pipeline (XGBoost + Sentence-BERT) that intelligently filters false alarms and prioritizes genuine emergencies (Levels 1-5) for immediate dispatcher action.
-
-> **Tech Stack:** `scikit-learn` · `LightGBM` · `XGBoost` · `Sentence-Transformers` · `Pandas` · `NLTK`
+### 3. Client Interface (`apps/mobile/` & `apps/frontend/`)
+A suite of **Flutter** and **React** applications tailored for each user role:
+- **Passenger App:** Route finding, tracking, and seat booking.
+- **Driver App:** Trip updates and passenger management.
+- **Admin Dashboard:** System-wide monitoring and resource allocation.
 
 ---
 
-## 📁 Organized Structure
+## 🛠️ Technology Stack
 
-- **`📂 apps/backend/busgo-backend/`**
-  - Production-ready Node.js + Express backend API.
-- **`📂 apps/frontend/busgo_admin/`**
-  - React + TypeScript + Vite admin dashboard.
-- **`📂 apps/mobile/busgo_client/`**
-  - Flutter client app for passengers.
-- **`📂 apps/mobile/busgo_drive/`**
-  - Flutter driver app for trip management.
-- **`📂 apps/mobile/busgo_scanner/`**
-  - Flutter scanner app for ticket validation.
-- **`📂 ai-models/neo-model-busgo/`**
-  - ML and data science experiments for ETA and triage.
-- **`📂 demos/pre-payment-demo/`**
-  - Payee sandbox payment integration demo.
-- **`📂 prototype/`**
-  - Git submodule to the initial project prototypes.
+| Domain | Technologies |
+| :--- | :--- |
+| **Frontend** | React, TypeScript, Vite, Tailwind CSS |
+| **Mobile** | Flutter, Dart |
+| **Backend** | Node.js, Express, Supabase (PostgreSQL) |
+| **AI/ML** | Python, Scikit-learn, XGBoost, LightGBM |
+| **Tools** | Git, Claude AI, VS Code |
 
 ---
 
 ## 🚦 Getting Started
 
-### 1️⃣ Environment Setup
-Each project requires its own configuration. See the `.env.example` files within each app directory. You will need a **Supabase** project for the backend.
+### 1️⃣ Clone the Repository
+```bash
+git clone https://github.com/NimuthuGanegoda/Online-Bus-Travelling-Management-Production-Ready.git
+cd Online-Bus-Travelling-Management-Production-Ready
+```
+
+### 2️⃣ Component Setup
+Navigate to each sub-directory to set up the individual services:
+
+- **Backend:** `cd apps/backend/busgo-backend && npm install`
+- **Admin Dashboard:** `cd apps/frontend/busgo_admin && npm install`
+- **Mobile Apps:** `cd apps/mobile/busgo_client && flutter pub get`
+
+### 3️⃣ Configuration
+- Copy `.env.example` to `.env` in each respective directory.
+- Ensure your **Supabase** credentials are correctly set in the backend environment file.
+
+---
+
+## 📁 Repository Structure
+
+```text
+Online-Bus-Travelling-Management-Production-Ready/
+├── 📂 apps/
+│   ├── 📂 backend/        # Express.js API & Database logic
+│   ├── 📂 frontend/       # React Admin Dashboard
+│   └── 📂 mobile/         # Flutter Client & Driver Apps
+├── 📂 ai-models/          # Neo Engine (ML Models)
+├── 📂 demos/              # Payment & Feature sandboxes
+└── 📂 prototype/          # Legacy prototypes & submodules
+```
