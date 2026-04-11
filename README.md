@@ -1,107 +1,186 @@
-# 🚌 BusGo: Online Bus Travelling Management - Monorepo
+# Supabase CLI
 
-![Project Status](https://img.shields.io/badge/Status-Production--Ready-brightgreen?style=for-the-badge)
-![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
+[![Coverage Status](https://coveralls.io/repos/github/supabase/cli/badge.svg?branch=develop)](https://coveralls.io/github/supabase/cli?branch=develop) [![Bitbucket Pipelines](https://img.shields.io/bitbucket/pipelines/supabase-cli/setup-cli/master?style=flat-square&label=Bitbucket%20Canary)](https://bitbucket.org/supabase-cli/setup-cli/pipelines) [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/sweatybridge%2Fsetup-cli?label=Gitlab%20Canary)
+](https://gitlab.com/sweatybridge/setup-cli/-/pipelines)
 
-Welcome to the **BusGo** ecosystem, a comprehensive suite of applications designed for modern bus management and passenger tracking in Sri Lanka.
+[Supabase](https://supabase.io) is an open source Firebase alternative. We're building the features of Firebase using enterprise-grade open source tools.
 
----
+This repository contains all the functionality for Supabase CLI.
 
-## 🌟 Project Overview
+## 👥 Project Team & Roles
 
-The BusGo system provides a seamless experience for passengers, drivers, and administrators:
-- **🚀 Backend API:** High-performance Node.js and Express server.
-- **📱 Mobile Apps:** Dedicated Flutter applications for tracking and trip management.
-- **🌐 Admin Dashboard:** Modern React web application for system oversight.
-- **🤖 AI Models:** Machine learning for ETA prediction and emergency triage.
+| Name | Role | Responsibility |
+| :--- | :--- | :--- |
+| **Amiliya Fernando Pulle** | Backend Developer | System Architecture & API Development |
+| **Sarasi Mahawattage** | Frontend Developer | UI/UX Design & Client-side Implementation |
+| **Neo Red** | Machine Learning Engineer | Predictive Models & Intelligent Features |
+| **Nimuthu Ganegoda** | Database Manager | Schema Design & Data Integrity |
 
----
+- [x] Running Supabase locally
+- [x] Managing database migrations
+- [x] Creating and deploying Supabase Functions
+- [x] Generating types directly from your database schema
+- [x] Making authenticated HTTP requests to [Management API](https://supabase.com/docs/reference/api/introduction)
 
-## 🛠️ Technology Stack & Build Process
+## Getting started
 
-This project was crafted with precision using an elite selection of tools:
+### Install the CLI
 
-### 🎨 Design & Frontend
-![Figma](https://img.shields.io/badge/figma-%23F24E1E.svg?style=for-the-badge&logo=figma&logoColor=white)
-![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white)
-![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)
-![TypeScript](https://img.shields.io/badge/typescript-%23007acc.svg?style=for-the-badge&logo=typescript&logoColor=white)
+Available via [NPM](https://www.npmjs.com) as dev dependency. To install:
 
-### ⚙️ Backend & Infrastructure
-![NodeJS](https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white)
-![Express.js](https://img.shields.io/badge/express.js-%23404d59.svg?style=for-the-badge&logo=express&logoColor=%2361DAFB)
-![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/postgres-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white)
-
-### 🤖 Development Tools
-![Claude AI](https://img.shields.io/badge/Claude%20AI-D97757?style=for-the-badge&logo=anthropic&logoColor=white)
-![VS Code](https://img.shields.io/badge/Visual%20Studio%20Code-0078d7.svg?style=for-the-badge&logo=visual-studio-code&logoColor=white)
-
----
-
-## 🤖 Machine Learning Intelligence (Neo)
-
-The **Neo** engine powers the system's intelligence through three specialized, independently deployable models:
-
-- **⭐ Driver Rating Predictor (NLP):** A LightGBM pipeline analyzing multi-language reviews (English/Sinhala/Mixed) to provide calibrated scores (1-10) adjusted for real-world context like peak traffic and weather.
-- **⏳ ETA Estimator (v4.0):** An optimized regression model designed for Colombo's urban routes, utilizing temporal encoding and real-time traffic logic for precise stop-level arrival predictions.
-- **🚨 Emergency Triage System:** A two-stage pipeline (XGBoost + Sentence-BERT) that intelligently filters false alarms and prioritizes genuine emergencies (Levels 1-5) for immediate dispatcher action.
-
-> **Tech Stack:** `scikit-learn` · `LightGBM` · `XGBoost` · `Sentence-Transformers` · `Pandas` · `NLTK`
-
----
-
-## 📁 Organized Structure
-
-- **`📂 apps/backend/busgo-backend/`**
-  - Production-ready Node.js + Express backend API.
-- **`📂 apps/frontend/busgo_admin/`**
-  - React + TypeScript + Vite admin dashboard.
-- **`📂 apps/mobile/busgo_client/`**
-  - Flutter client app for passengers.
-- **`📂 apps/mobile/busgo_drive/`**
-  - Flutter driver app for trip management.
-- **`📂 apps/mobile/busgo_scanner/`**
-  - Flutter scanner app for ticket validation.
-- **`📂 ai-models/neo-model-busgo/`**
-  - ML and data science experiments for ETA and triage.
-- **`📂 demos/pre-payment-demo/`**
-  - Payee sandbox payment integration demo.
-- **`📂 prototype/`**
-  - Git submodule to the initial project prototypes.
-
----
-
-## 🚦 Getting Started
-
-### 1️⃣ Environment Setup
-Each project requires its own configuration. See the `.env.example` files within each app directory. You will need a **Supabase** project for the backend to function.
-
-### 2️⃣ Run the Backend
 ```bash
-cd apps/backend/busgo-backend
-npm install
-npm run dev
+npm i supabase --save-dev
 ```
 
-### 3️⃣ Run the Admin Dashboard
-```bash
-cd apps/frontend/busgo_admin
-npm install
-npm run dev
+When installing with yarn 4, you need to disable experimental fetch with the following nodejs config.
+
+```
+NODE_OPTIONS=--no-experimental-fetch yarn add supabase
 ```
 
-### 4️⃣ Run Mobile Apps (Flutter)
-Ensure you have the Flutter SDK installed.
+> **Note**
+For Bun versions below v1.0.17, you must add `supabase` as a [trusted dependency](https://bun.sh/guides/install/trusted) before running `bun add -D supabase`.
+
+<details>
+  <summary><b>macOS</b></summary>
+
+  Available via [Homebrew](https://brew.sh). To install:
+
+  ```sh
+  brew install supabase/tap/supabase
+  ```
+
+  To install the beta release channel:
+  
+  ```sh
+  brew install supabase/tap/supabase-beta
+  brew link --overwrite supabase-beta
+  ```
+  
+  To upgrade:
+
+  ```sh
+  brew upgrade supabase
+  ```
+</details>
+
+<details>
+  <summary><b>Windows</b></summary>
+
+  Available via [Scoop](https://scoop.sh). To install:
+
+  ```powershell
+  scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
+  scoop install supabase
+  ```
+
+  To upgrade:
+
+  ```powershell
+  scoop update supabase
+  ```
+</details>
+
+<details>
+  <summary><b>Linux</b></summary>
+
+  Available via [Homebrew](https://brew.sh) and Linux packages.
+
+  #### via Homebrew
+
+  To install:
+
+  ```sh
+  brew install supabase/tap/supabase
+  ```
+
+  To upgrade:
+
+  ```sh
+  brew upgrade supabase
+  ```
+
+  #### via Linux packages
+
+  Linux packages are provided in [Releases](https://github.com/supabase/cli/releases). To install, download the `.apk`/`.deb`/`.rpm`/`.pkg.tar.zst` file depending on your package manager and run the respective commands.
+
+  ```sh
+  sudo apk add --allow-untrusted <...>.apk
+  ```
+
+  ```sh
+  sudo dpkg -i <...>.deb
+  ```
+
+  ```sh
+  sudo rpm -i <...>.rpm
+  ```
+
+  ```sh
+  sudo pacman -U <...>.pkg.tar.zst
+  ```
+</details>
+
+<details>
+  <summary><b>Other Platforms</b></summary>
+
+  You can also install the CLI via [go modules](https://go.dev/ref/mod#go-install) without the help of package managers.
+
+  ```sh
+  go install github.com/supabase/cli@latest
+  ```
+
+  Add a symlink to the binary in `$PATH` for easier access:
+
+  ```sh
+  ln -s "$(go env GOPATH)/bin/cli" /usr/bin/supabase
+  ```
+
+  This works on other non-standard Linux distros.
+</details>
+
+<details>
+  <summary><b>Community Maintained Packages</b></summary>
+
+  Available via [pkgx](https://pkgx.sh/). Package script [here](https://github.com/pkgxdev/pantry/blob/main/projects/supabase.com/cli/package.yml).
+  To install in your working directory:
+
+  ```bash
+  pkgx install supabase
+  ```
+
+  Available via [Nixpkgs](https://nixos.org/). Package script [here](https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/supabase-cli/default.nix).
+</details>
+
+### Run the CLI
+
 ```bash
-cd apps/mobile/busgo_client
-flutter pub get
-flutter run
+supabase bootstrap
 ```
 
----
+Or using npx:
 
-## 🎓 Academic Supervision
+```bash
+npx supabase bootstrap
+```
 
-This project was guided and supervised by **Ann Roshani Appuhamy**. 
-This project is a part of an undergraduate coursework.
+The bootstrap command will guide you through the process of setting up a Supabase project using one of the [starter](https://github.com/supabase-community/supabase-samples/blob/main/samples.json) templates.
+
+## Docs
+
+Command & config reference can be found [here](https://supabase.com/docs/reference/cli/about).
+
+## Breaking changes
+
+We follow semantic versioning for changes that directly impact CLI commands, flags, and configurations.
+
+However, due to dependencies on other service images, we cannot guarantee that schema migrations, seed.sql, and generated types will always work for the same CLI major version. If you need such guarantees, we encourage you to pin a specific version of CLI in package.json.
+
+## Developing
+
+To run from source:
+
+```sh
+# Go >= 1.22
+go run . help
+```
