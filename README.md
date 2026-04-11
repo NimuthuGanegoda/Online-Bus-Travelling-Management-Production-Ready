@@ -1,85 +1,72 @@
 # Online Bus Travelling Management - Monorepo
 
-This repository contains the BusGo ecosystem: backend APIs, web admin frontend, Flutter mobile apps, ML experiments, and a payment demo.
+This repository contains the **BusGo** ecosystem: a comprehensive suite of applications designed for modern bus management and passenger tracking.
+
+## Project Overview
+
+The BusGo system was built to provide a seamless experience for passengers, drivers, and administrators. It consists of:
+- **Backend API:** A robust Node.js and Express server managing data flow and business logic.
+- **Mobile Applications:** Dedicated Flutter apps for passengers (to track and book) and drivers (to manage trips).
+- **Admin Dashboard:** A React-based web application for system-wide oversight and management.
+- **AI Models:** Machine learning models for ETA prediction and intelligent emergency triage.
+
+## Development & Technology Stack
+
+This project was built using a modern, efficient workflow:
+- **Design:** The frontend interfaces were meticulously designed using **Figma** to ensure a user-friendly and consistent aesthetic.
+- **Frontend & Mobile:** 
+  - **Flutter** was used for both the passenger and driver mobile applications to provide a high-performance cross-platform experience.
+  - **React (TypeScript)** was employed for the Admin Web application, utilizing Vite for a modern development experience.
+- **Backend:** 
+  - Developed using **Node.js** and **Express.js**, with the assistance of **Claude AI** for optimized logic and **Visual Studio Code** as the primary IDE.
+- **Database:** **Supabase (PostgreSQL)** handles all data storage, authentication, and real-time location broadcasting.
+- **AI/ML:** Developed with Python using **Scikit-learn** and **Pandas**.
 
 ## Organized Structure
 
 - `apps/backend/busgo-backend/`
-  - Production-ready Node.js + Express backend API
+  - Production-ready Node.js + Express backend API.
 - `apps/frontend/busgo_admin/`
-  - React + TypeScript + Vite admin dashboard
+  - React + TypeScript + Vite admin dashboard.
 - `apps/mobile/busgo_client/`
-  - Flutter client app
+  - Flutter client app for passengers.
 - `apps/mobile/busgo_drive/`
-  - Flutter driver app
+  - Flutter driver app for trip management.
 - `apps/mobile/busgo_scanner/`
-  - Flutter scanner app
+  - Flutter scanner app for ticket validation.
 - `ai-models/neo-model-busgo/`
-  - ML and data science experiments
+  - ML and data science experiments for ETA and triage.
 - `demos/pre-payment-demo/`
-  - Payee sandbox payment integration demo
+  - Payee sandbox payment integration demo.
 - `prototype/`
-  - Git submodule to the prototype repository
-
-## Reorganize Existing Folder Names
-
-If your checkout still has old folder names (for example with spaces and inconsistent casing), run:
-
-```bash
-bash scripts/reorganize-repo.sh
-```
+  - Git submodule to the initial project prototypes.
 
 ## Getting Started
 
-### 1. Clone and initialize submodules
+### 1. Environment Setup
+Each project requires its own configuration. See the `.env.example` files within each app directory. You will need a **Supabase** project for the backend to function.
 
-```bash
-git clone <repo-url>
-cd Online-Bus-Travelling-Management-Production-Ready
-git submodule update --init --recursive
-```
-
-### 2. Run backend
-
+### 2. Run the Backend
 ```bash
 cd apps/backend/busgo-backend
 npm install
 npm run dev
 ```
 
-### 3. Run admin web app
-
+### 3. Run the Admin Dashboard
 ```bash
 cd apps/frontend/busgo_admin
 npm install
 npm run dev
 ```
 
-### 4. Run Flutter apps
-
-Example for client app:
-
+### 4. Run Mobile Apps (Flutter)
+Ensure you have the Flutter SDK installed.
 ```bash
 cd apps/mobile/busgo_client
 flutter pub get
 flutter run
 ```
-
-Repeat similarly for `apps/mobile/busgo_drive` and `apps/mobile/busgo_scanner`.
-
-### 5. Run payment demo
-
-```bash
-cd demos/pre-payment-demo
-npm install
-npm start
-```
-
-## Notes
-
-- Each project is independently versioned and configured.
-- Keep environment secrets in local `.env` files and never commit them.
-- See each project's own README for project-specific setup details.
 
 ## Academic Supervision
 
