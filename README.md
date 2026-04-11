@@ -39,6 +39,18 @@ This project was crafted with precision using an elite selection of tools:
 
 ---
 
+## 🤖 Machine Learning Intelligence (Neo)
+
+The **Neo** engine powers the system's intelligence through three specialized, independently deployable models:
+
+- **⭐ Driver Rating Predictor (NLP):** A LightGBM pipeline analyzing multi-language reviews (English/Sinhala/Mixed) to provide calibrated scores (1-10) adjusted for real-world context like peak traffic and weather.
+- **⏳ ETA Estimator (v4.0):** An optimized regression model designed for Colombo's urban routes, utilizing temporal encoding and real-time traffic logic for precise stop-level arrival predictions.
+- **🚨 Emergency Triage System:** A two-stage pipeline (XGBoost + Sentence-BERT) that intelligently filters false alarms and prioritizes genuine emergencies (Levels 1-5) for immediate dispatcher action.
+
+> **Tech Stack:** `scikit-learn` · `LightGBM` · `XGBoost` · `Sentence-Transformers` · `Pandas` · `NLTK`
+
+---
+
 ## 📁 Organized Structure
 
 - **`📂 apps/backend/busgo-backend/`**
