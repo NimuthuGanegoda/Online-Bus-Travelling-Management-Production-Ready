@@ -1,4 +1,4 @@
-# 🚌 BusGo: Online Bus Travelling Management - Monorepo
+# 🚌 BusGo: Online Bus Travelling Management - 
 
 ![Project Status](https://img.shields.io/badge/Status-Production--Ready-brightgreen?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
