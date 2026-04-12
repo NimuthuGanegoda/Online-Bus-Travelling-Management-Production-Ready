@@ -16,6 +16,11 @@ Welcome to the **BusGo** ecosystem, a comprehensive suite of applications design
 
 ---
 
+## # Academic Supervision
+This project was guided and supervised by Ann Roshanie Appuhamy. This project is a part of undergraduate unit coursework
+
+---
+
 ## 🌟 Project Overview
 
 The BusGo system provides a seamless experience for passengers, drivers, and administrators:
@@ -30,7 +35,7 @@ The BusGo system provides a seamless experience for passengers, drivers, and adm
 
 The project is organized into logical domains to ensure clarity and scalability:
 
-### 1. Core Backend Server (`backend/`)
+### 1. Core Backend Server (`apps/backend/`)
 The engine of the system, built with **Express.js** and **Supabase (PostgreSQL)**. This is the central hub for authentication, real-time tracking, and trip management.
 - **Key Features:** JWT security, Role-based Access Control (RBAC), and Real-time updates.
 
@@ -40,7 +45,7 @@ The **Neo** engine provides predictive intelligence.
 - **ETA Estimation:** Traffic-aware arrival predictions.
 - **Emergency Triage:** Automated priority filtering for incidents.
 
-### 3. Client Interface Applications (`mobile/` & `frontend/`)
+### 3. Client Interface Applications (`apps/mobile/` & `apps/frontend/`)
 A suite of **Flutter** and **React** applications tailored for each user role:
 - **Passenger App:** Route finding, tracking, and seat booking.
 - **Driver App:** Trip updates and passenger management.
@@ -71,9 +76,9 @@ cd Online-Bus-Travelling-Management-Production-Ready
 ### 2️⃣ Component Setup
 Navigate to each sub-directory to set up the individual services:
 
-- **Backend Server:** `cd backend/busgo-backend && npm install`
-- **Admin Dashboard:** `cd frontend/busgo_admin && npm install`
-- **Mobile Apps:** `cd mobile/busgo_client && flutter pub get`
+- **Backend Server:** `cd apps/backend/busgo-backend && npm install`
+- **Admin Dashboard:** `cd apps/frontend/busgo_admin && npm install`
+- **Mobile Apps:** `cd apps/mobile/busgo_client && flutter pub get`
 
 ### 3️⃣ Configuration
 - Copy `.env.example` to `.env` in each respective directory.
@@ -87,8 +92,8 @@ Navigate to each sub-directory to set up the individual services:
 Online-Bus-Travelling-Management-Production-Ready/
 ├── 📂 apps/
 │   ├── 📂 backend/        # Core Backend Server (Express.js API)
-│   └── 📂 frontend/       # React Admin Dashboard
-├── 📂 mobile/             # Flutter Client & Driver Apps
+│   ├── 📂 frontend/       # React Admin Dashboard
+│   └── 📂 mobile/         # Flutter Client & Driver Apps
 ├── 📂 ai-models/          # Neo Engine (ML Models)
 ├── 📂 demos/              # Payment & Feature sandboxes
 └── 📂 prototype/          # Legacy prototypes & submodules
