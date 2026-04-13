@@ -49,3 +49,6 @@ pnpm-debug.log*
 *.swo
 PRIVATE_NOTES.md
 vault_key.txt
+private_logs/*.md
+nimuthu_key.txt
+neo_key.txt
