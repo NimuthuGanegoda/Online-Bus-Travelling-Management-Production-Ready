@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, CircleMarker, Tooltip } from 'react-leaflet';
-import { X, Plus, Trash2, MapPin, GripVertical, Map, Keyboard } from 'lucide-react';
+import { X, Plus, Trash2, MapPin, ChevronUp, ChevronDown, Map, Keyboard } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
-  fetchRouteStops, addStop, removeStop,
+  fetchRouteStops, addStop, removeStop, reorderStop,
   type BusStop,
 } from '../services/stops.service';
 import type { Route } from '../services/routes.service';
@@ -108,6 +108,31 @@ export default function StopsPanel({ route, onClose }: Props) {
       setFormError(err?.response?.data?.message ?? err?.message ?? 'Failed to add stop');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleMove = async (index: number, direction: 'up' | 'down') => {
+    const swapIdx = direction === 'up' ? index - 1 : index + 1;
+    if (swapIdx < 0 || swapIdx >= stops.length) return;
+
+    const a = stops[index];
+    const b = stops[swapIdx];
+
+    // Optimistic update
+    const updated = [...stops];
+    updated[index] = { ...a, stop_order: b.stop_order };
+    updated[swapIdx] = { ...b, stop_order: a.stop_order };
+    updated.sort((x, y) => x.stop_order - y.stop_order);
+    setStops(updated);
+
+    try {
+      await Promise.all([
+        reorderStop(a.junction_id, b.stop_order),
+        reorderStop(b.junction_id, a.stop_order),
+      ]);
+    } catch {
+      // Roll back on failure
+      setStops(stops);
     }
   };
 
@@ -287,7 +312,24 @@ export default function StopsPanel({ route, onClose }: Props) {
                   <div className="stop-order-badge" style={{ background: route.color }}>
                     {idx + 1}
                   </div>
-                  <GripVertical size={14} className="stop-grip" />
+                  <div className="stop-reorder-btns">
+                    <button
+                      className="stop-reorder-btn"
+                      onClick={() => handleMove(idx, 'up')}
+                      disabled={idx === 0}
+                      title="Move up"
+                    >
+                      <ChevronUp size={13} />
+                    </button>
+                    <button
+                      className="stop-reorder-btn"
+                      onClick={() => handleMove(idx, 'down')}
+                      disabled={idx === stops.length - 1}
+                      title="Move down"
+                    >
+                      <ChevronDown size={13} />
+                    </button>
+                  </div>
                   <div className="stop-info">
                     <div className="stop-name">{stop.stop_name}</div>
                     <div className="stop-coords">

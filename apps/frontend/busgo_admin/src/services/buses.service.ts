@@ -18,6 +18,7 @@ export async function fetchAllBuses(params?: { status?: string; search?: string 
 export async function fetchStandbyBuses(): Promise<StandbyBus[]> {
   const { data: res } = await api.get('/buses', { params: { status: 'standby' } });
   return (res.data ?? []).map((b: any) => ({
+    _uuid: b.id,
     id: b.bus_number ?? b.id,
     registration: b.registration ?? '—',
   }));
@@ -35,7 +36,7 @@ export async function updateBusStatus(busId: string, status: string): Promise<Bu
 
 export async function updateBusAssignment(
   busId: string,
-  payload: { driver_name?: string; registration?: string; route_id?: string | null },
+  payload: { driverId?: string | null; routeId?: string | null; registration?: string },
 ): Promise<Bus> {
   const { data: res } = await api.patch(`/buses/${busId}`, payload);
   return mapBus(res.data);

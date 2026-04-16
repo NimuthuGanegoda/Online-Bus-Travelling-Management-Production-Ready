@@ -6,7 +6,8 @@ const ALERT_SELECT = `
   latitude, longitude, status, police_notified,
   created_at, updated_at,
   users   ( id, full_name, email, phone ),
-  buses   ( id, bus_number, registration,
+  drivers ( id, driver_code, full_name, email, phone ),
+  buses   ( id, bus_number, registration, driver_name,
             bus_routes ( route_number, route_name ) ),
   trips   ( id )
 `;
@@ -115,7 +116,7 @@ export async function deployStandbyBus(alertId, standbyBusId, admin) {
   // Mark the standby bus as active
   const { data: bus } = await supabase
     .from('buses')
-    .update({ bus_status: 'active' })
+    .update({ status: 'active' })
     .eq('id', standbyBusId)
     .select('id, bus_number, registration')
     .single();

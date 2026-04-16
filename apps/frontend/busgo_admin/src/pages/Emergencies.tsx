@@ -31,10 +31,18 @@ export default function Emergencies() {
   const [deployedMsg, setDeployedMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchEmergencies({ page_size: 100 })
-      .then(setAlerts)
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    const load = (initial = false) => {
+      if (initial) setLoading(true);
+      fetchEmergencies({ page_size: 100 })
+        .then(setAlerts)
+        .catch(console.error)
+        .finally(() => { if (initial) setLoading(false); });
+    };
+
+    load(true);
+    // Poll every 10 s so driver-submitted alerts appear without manual refresh
+    const interval = setInterval(() => load(false), 10_000);
+    return () => clearInterval(interval);
   }, []);
 
   const totalCount = alerts.length;

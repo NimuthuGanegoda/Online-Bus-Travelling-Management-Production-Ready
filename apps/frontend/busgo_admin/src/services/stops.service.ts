@@ -44,3 +44,12 @@ export async function removeStop(junctionId: string): Promise<void> {
 export async function reorderStop(junctionId: string, stop_order: number): Promise<void> {
   await api.patch(`/stops/${junctionId}/order`, { stop_order });
 }
+
+export async function linkExistingStop(payload: {
+  route_id:   string;
+  stop_id:    string;
+  stop_order?: number;
+}): Promise<BusStop> {
+  const { data: res } = await api.post('/stops/link', payload);
+  return res.data;
+}

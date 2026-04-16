@@ -20,14 +20,29 @@ void main() {
   runApp(const BusGoDriveApp());
 }
 
-class BusGoDriveApp extends StatelessWidget {
+class BusGoDriveApp extends StatefulWidget {
   const BusGoDriveApp({super.key});
+
+  @override
+  State<BusGoDriveApp> createState() => _BusGoDriveAppState();
+}
+
+class _BusGoDriveAppState extends State<BusGoDriveApp> {
+  final _auth = AuthProvider();
+  late final _router = buildRouter(_auth);
+
+  @override
+  void initState() {
+    super.initState();
+    // Restore saved token on startup so user stays logged in
+    _auth.tryRestoreSession();
+  }
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider.value(value: _auth),
         ChangeNotifierProvider(create: (_) => RouteProvider()),
         ChangeNotifierProvider(create: (_) => TripProvider()),
         ChangeNotifierProvider(create: (_) => EmergencyProvider()),
@@ -36,7 +51,7 @@ class BusGoDriveApp extends StatelessWidget {
         title: 'BusGo Drive',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
-        routerConfig: appRouter,
+        routerConfig: _router,
       ),
     );
   }

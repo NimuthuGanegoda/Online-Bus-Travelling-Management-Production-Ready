@@ -85,6 +85,38 @@ export function verifyResetToken(token) {
   });
 }
 
+// ── Driver tokens (separate audience: busgo-driver) ──────────
+
+export function signDriverAccessToken(payload) {
+  return jwt.sign(payload, env.JWT_ACCESS_SECRET, {
+    expiresIn: env.JWT_ACCESS_EXPIRES_IN,
+    issuer: 'busgo-api',
+    audience: 'busgo-driver',
+  });
+}
+
+export function signDriverRefreshToken(payload) {
+  return jwt.sign(payload, env.JWT_REFRESH_SECRET, {
+    expiresIn: env.JWT_REFRESH_EXPIRES_IN,
+    issuer: 'busgo-api',
+    audience: 'busgo-driver',
+  });
+}
+
+export function verifyDriverAccessToken(token) {
+  return jwt.verify(token, env.JWT_ACCESS_SECRET, {
+    issuer: 'busgo-api',
+    audience: 'busgo-driver',
+  });
+}
+
+export function verifyDriverRefreshToken(token) {
+  return jwt.verify(token, env.JWT_REFRESH_SECRET, {
+    issuer: 'busgo-api',
+    audience: 'busgo-driver',
+  });
+}
+
 // ── Admin tokens (reuse same secrets, separate audience) ──────
 
 /**

@@ -159,6 +159,38 @@ class _LiveMapScreenState extends State<LiveMapScreen>
                             }).toList(),
                           ),
 
+                        // ── Start & End markers per route ──
+                        MarkerLayer(
+                          markers: _routeDefinitions.expand((def) {
+                            final waypoints = def.waypoints;
+                            if (waypoints.isEmpty) return <Marker>[];
+                            return [
+                              // Start marker (green)
+                              Marker(
+                                point: waypoints.first,
+                                width: 36,
+                                height: 36,
+                                child: _TerminalMarker(
+                                  label: 'A',
+                                  color: const Color(0xFF2E7D32),
+                                  icon: Icons.trip_origin,
+                                ),
+                              ),
+                              // End marker (route color with flag)
+                              Marker(
+                                point: waypoints.last,
+                                width: 36,
+                                height: 36,
+                                child: _TerminalMarker(
+                                  label: 'B',
+                                  color: const Color(0xFFC62828),
+                                  icon: Icons.flag,
+                                ),
+                              ),
+                            ];
+                          }).toList(),
+                        ),
+
                         // ── User location with pulse ──
                         MarkerLayer(
                           markers: [
@@ -885,6 +917,49 @@ class _LiveMapScreenState extends State<LiveMapScreen>
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// TERMINAL MARKER — shown only at route start (A) and end (B)
+// ═══════════════════════════════════════════════════════════
+class _TerminalMarker extends StatelessWidget {
+  final String label;
+  final Color color;
+  final IconData icon;
+
+  const _TerminalMarker({
+    required this.label,
+    required this.color,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2.5),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.5),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
       ),
     );
   }

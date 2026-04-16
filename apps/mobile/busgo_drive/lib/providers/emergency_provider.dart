@@ -1,5 +1,7 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../models/alert_model.dart';
+import '../services/api_service.dart';
 
 class EmergencyProvider extends ChangeNotifier {
   Alert? _activeAlert;
@@ -7,6 +9,7 @@ class EmergencyProvider extends ChangeNotifier {
   String _description = '';
   bool _isSending = false;
   bool _isSent = false;
+  String? _error;
 
   Alert? get activeAlert => _activeAlert;
   String? get selectedType => _selectedType;
@@ -14,6 +17,9 @@ class EmergencyProvider extends ChangeNotifier {
   bool get isSending => _isSending;
   bool get isSent => _isSent;
   bool get hasActiveAlert => _activeAlert != null;
+  String? get error => _error;
+
+  final _api = ApiService();
 
   void selectType(String type) {
     _selectedType = type;
@@ -33,24 +39,39 @@ class EmergencyProvider extends ChangeNotifier {
     if (_selectedType == null) return;
 
     _isSending = true;
+    _error = null;
     notifyListeners();
 
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      final res = await _api.sendEmergency(
+        alertType:   _selectedType!,
+        description: _description.isNotEmpty ? _description : null,
+        latitude:    latitude,
+        longitude:   longitude,
+      );
 
-    _activeAlert = Alert(
-      id: 'ALR-${DateTime.now().millisecondsSinceEpoch}',
-      type: _selectedType!,
-      description: _description,
-      driverId: driverId,
-      tripId: tripId,
-      latitude: latitude,
-      longitude: longitude,
-      timestamp: DateTime.now(),
-      status: AlertStatus.sent,
-    );
+      final data = res.data['data'] as Map<String, dynamic>;
+
+      _activeAlert = Alert(
+        id:          data['id']         as String,
+        type:        data['alert_type'] as String,
+        description: data['description'] as String? ?? _description,
+        driverId:    driverId,
+        tripId:      tripId,
+        latitude:    latitude,
+        longitude:   longitude,
+        timestamp:   DateTime.now(),
+        status:      AlertStatus.sent,
+      );
+
+      _isSent = true;
+    } on DioException catch (e) {
+      _error = e.response?.data?['message'] ?? 'Failed to send alert.';
+    } catch (_) {
+      _error = 'Connection error. Alert not sent.';
+    }
 
     _isSending = false;
-    _isSent = true;
     notifyListeners();
   }
 
@@ -69,6 +90,7 @@ class EmergencyProvider extends ChangeNotifier {
     _description = '';
     _isSending = false;
     _isSent = false;
+    _error = null;
     notifyListeners();
   }
 }

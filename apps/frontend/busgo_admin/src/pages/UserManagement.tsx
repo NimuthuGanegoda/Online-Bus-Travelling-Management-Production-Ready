@@ -75,7 +75,7 @@ export default function UserManagement() {
       full_name: d.name,
       email:     d.email ?? '',
       phone:     d.phone === '—' ? '' : (d.phone ?? ''),
-      route_id:  '',
+      route_id:  d.routeId ?? '',
     });
     setFormError(null);
     setModalType('edit-driver');
@@ -660,9 +660,13 @@ export default function UserManagement() {
                   <td className="driver-email">{driver.email}</td>
                   <td>{driver.phone}</td>
                   <td>
-                    {driver.route
-                      ? <span className="route-num">{driver.route}</span>
-                      : <span className="unassigned">Unassigned</span>}
+                    {(() => {
+                      const routeNum = driver.route
+                        ?? (driver.routeId ? routes.find((r) => r.id === driver.routeId)?.route_number : null);
+                      return routeNum
+                        ? <span className="route-num">{routeNum}</span>
+                        : <span className="unassigned">Unassigned</span>;
+                    })()}
                   </td>
                   <td>
                     <span className={`user-status-badge ${driver.status.toLowerCase()}`}>

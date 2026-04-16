@@ -510,17 +510,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
 
     if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Registration successful! Login with your email & password.',
-            style: _inter(size: 13, color: Colors.white),
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Icon(Icons.check_circle, color: AppColors.success, size: 28),
+              const SizedBox(width: 10),
+              Text('Registration Submitted', style: _inter(size: 16, weight: FontWeight.w700)),
+            ],
           ),
-          backgroundColor: AppColors.success,
-          duration: const Duration(seconds: 3),
+          content: Text(
+            'Your registration is pending.\n\nAfter approval from the admin, you can log in to the app.',
+            style: _inter(size: 14, color: const Color(0xFF4B5563)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text('OK', style: _inter(size: 14, weight: FontWeight.w700, color: AppColors.primary)),
+            ),
+          ],
         ),
       );
-      router.go('/login');
+      if (mounted) router.go('/login');
     }
   }
 }

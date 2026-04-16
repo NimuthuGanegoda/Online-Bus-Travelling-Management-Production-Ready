@@ -95,13 +95,16 @@ export async function toggleRouteStatus(routeId, admin) {
 }
 
 export async function deleteRoute(routeId, admin) {
+  // Delete any buses still assigned to this route (route_id is NOT NULL so they can't be orphaned)
   const { count } = await supabase
     .from('buses').select('*', { count: 'exact', head: true }).eq('route_id', routeId);
+
   if (count > 0) {
-    throw Object.assign(
-      new Error(`Cannot delete: ${count} bus(es) still assigned to this route`),
-      { statusCode: 409 },
-    );
+    const { error: busDeleteError } = await supabase
+      .from('buses')
+      .delete()
+      .eq('route_id', routeId);
+    if (busDeleteError) throw busDeleteError;
   }
 
   const { error } = await supabase.from('bus_routes').delete().eq('id', routeId);
@@ -110,6 +113,6 @@ export async function deleteRoute(routeId, admin) {
   createAuditLog({
     adminId: admin.id, adminEmail: admin.email,
     action: 'DELETE', entity: 'Route', entityId: routeId,
-    details: 'Route deleted',
+    details: `Route deleted${count > 0 ? `; ${count} assigned bus(es) also deleted` : ''}`,
   });
 }

@@ -64,17 +64,25 @@ export default function Dashboard() {
   const notifRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    Promise.all([
-      fetchDashboardStats(),
-      fetchLiveMapBuses(),
-      fetchDashboardEmergencies(),
-      fetchNotifications(),
-    ]).then(([s, b, a, n]) => {
-      setStats(s);
-      setBuses(b.filter((bus) => bus.lat && bus.lng));
-      setAlerts(a);
-      setNotifList(n);
-    }).catch(console.error).finally(() => setLoading(false));
+    const load = (initial = false) => {
+      if (initial) setLoading(true);
+      Promise.all([
+        fetchDashboardStats(),
+        fetchLiveMapBuses(),
+        fetchDashboardEmergencies(),
+        fetchNotifications(),
+      ]).then(([s, b, a, n]) => {
+        setStats(s);
+        setBuses(b.filter((bus) => bus.lat && bus.lng));
+        setAlerts(a);
+        setNotifList(n);
+      }).catch(console.error).finally(() => { if (initial) setLoading(false); });
+    };
+
+    load(true);
+    // Poll every 10s so driver-submitted alerts appear without manual refresh
+    const interval = setInterval(() => load(false), 10_000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {

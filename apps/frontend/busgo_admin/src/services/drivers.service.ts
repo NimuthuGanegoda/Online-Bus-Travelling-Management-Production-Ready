@@ -2,6 +2,11 @@ import api from './api';
 import type { Driver } from '../types';
 import { mapDriver } from './mappers';
 
+export async function fetchDriverById(id: string): Promise<Driver> {
+  const { data: res } = await api.get(`/drivers/${id}`);
+  return mapDriver(res.data);
+}
+
 export async function fetchDrivers(params?: { status?: string; search?: string }): Promise<Driver[]> {
   const { data: res } = await api.get('/drivers', { params });
   return (res.data ?? []).map(mapDriver);

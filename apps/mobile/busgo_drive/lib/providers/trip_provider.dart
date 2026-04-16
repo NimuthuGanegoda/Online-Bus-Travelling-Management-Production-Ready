@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import '../core/utils/helpers.dart';
 import '../models/route_model.dart';
 import '../models/trip_model.dart';
+import '../services/api_service.dart';
 
 class TripProvider extends ChangeNotifier {
   Trip? _currentTrip;
@@ -13,16 +14,17 @@ class TripProvider extends ChangeNotifier {
   TripStatus _status = TripStatus.idle;
   Trip? _lastCompletedTrip;
 
-  // GPS along polyline
   LatLng _currentLocation = LatLng(6.9320, 79.8828);
   double _currentSpeed = 0;
   Timer? _gpsTimer;
+  Timer? _locationUpdateTimer;
   final Random _random = Random();
 
-  // Polyline progress tracking
   int _polySegmentIndex = 0;
-  double _segmentProgress = 0.0; // 0.0 to 1.0 within current segment
+  double _segmentProgress = 0.0;
   List<LatLng> _traveledPath = [];
+
+  final _api = ApiService();
 
   Trip? get currentTrip => _currentTrip;
   BusRoute? get currentRoute => _currentRoute;
@@ -34,8 +36,7 @@ class TripProvider extends ChangeNotifier {
   List<LatLng> get traveledPath => _traveledPath;
 
   RouteStop? get nextStop {
-    if (_currentRoute == null) return null;
-    if (_currentStopIndex >= _currentRoute!.stops.length) return null;
+    if (_currentRoute == null || _currentStopIndex >= _currentRoute!.stops.length) return null;
     return _currentRoute!.stops[_currentStopIndex];
   }
 
@@ -46,9 +47,7 @@ class TripProvider extends ChangeNotifier {
 
   int get etaMinutes {
     if (_currentRoute == null) return 0;
-    final remaining =
-        _currentRoute!.stops.length - _currentStopIndex;
-    return (remaining * 8).clamp(0, 999);
+    return ((_currentRoute!.stops.length - _currentStopIndex) * 8).clamp(0, 999);
   }
 
   void startTrip(BusRoute route) {
@@ -59,13 +58,13 @@ class TripProvider extends ChangeNotifier {
     _segmentProgress = 0.0;
 
     _currentTrip = Trip(
-      id: 'TRP-${DateTime.now().millisecondsSinceEpoch}',
-      routeId: route.id,
-      routeNumber: route.routeNumber,
-      routeName: route.name,
-      driverId: 'DRV-2841',
-      startTime: DateTime.now(),
-      totalStops: route.stops.length,
+      id:            'TRP-${DateTime.now().millisecondsSinceEpoch}',
+      routeId:       route.id,
+      routeNumber:   route.routeNumber,
+      routeName:     route.name,
+      driverId:      '',
+      startTime:     DateTime.now(),
+      totalStops:    route.stops.length,
       totalDistance: route.distanceKm,
     );
 
@@ -78,6 +77,7 @@ class TripProvider extends ChangeNotifier {
     }
 
     _startGpsSimulation();
+    _startLocationSync();
     notifyListeners();
   }
 
@@ -85,31 +85,28 @@ class TripProvider extends ChangeNotifier {
     if (_currentTrip == null || _currentRoute == null) return;
     _status = TripStatus.atStop;
 
-    final passengers = _random.nextInt(8) + 1;
-    final alighting = _random.nextInt(
-      (_currentTrip!.currentPassengers + 1).clamp(0, 5),
-    );
+    final boarded  = _random.nextInt(8) + 1;
+    final alighted = _random.nextInt((_currentTrip!.currentPassengers + 1).clamp(0, 5));
 
     _currentTrip = _currentTrip!.copyWith(
-      passengersBoarded: _currentTrip!.passengersBoarded + passengers,
-      passengersAlighted: _currentTrip!.passengersAlighted + alighting,
-      currentPassengers:
-          _currentTrip!.currentPassengers + passengers - alighting,
-      stopsCompleted: _currentStopIndex + 1,
+      passengersBoarded:  _currentTrip!.passengersBoarded  + boarded,
+      passengersAlighted: _currentTrip!.passengersAlighted + alighted,
+      currentPassengers:  _currentTrip!.currentPassengers  + boarded - alighted,
+      stopsCompleted:     _currentStopIndex + 1,
     );
 
+    // Push passenger crowd level to backend
+    _syncPassengers(_currentTrip!.currentPassengers);
     notifyListeners();
   }
 
   void departFromStop() {
     if (_currentTrip == null || _currentRoute == null) return;
-
     _currentStopIndex++;
     if (_currentStopIndex >= _currentRoute!.stops.length) {
       endTrip();
       return;
     }
-
     _status = TripStatus.active;
     notifyListeners();
   }
@@ -117,33 +114,33 @@ class TripProvider extends ChangeNotifier {
   void updatePassengers(int boarded, int alighted) {
     if (_currentTrip == null) return;
     _currentTrip = _currentTrip!.copyWith(
-      passengersBoarded: _currentTrip!.passengersBoarded + boarded,
+      passengersBoarded:  _currentTrip!.passengersBoarded  + boarded,
       passengersAlighted: _currentTrip!.passengersAlighted + alighted,
-      currentPassengers:
-          (_currentTrip!.currentPassengers + boarded - alighted)
-              .clamp(0, 999),
+      currentPassengers:  (_currentTrip!.currentPassengers + boarded - alighted).clamp(0, 999),
     );
+    _syncPassengers(_currentTrip!.currentPassengers);
     notifyListeners();
   }
 
   void endTrip() {
     _gpsTimer?.cancel();
+    _locationUpdateTimer?.cancel();
     _status = TripStatus.completed;
 
     if (_currentTrip != null) {
       _lastCompletedTrip = _currentTrip!.copyWith(
-        status: TripStatus.completed,
-        endTime: DateTime.now(),
+        status:          TripStatus.completed,
+        endTime:         DateTime.now(),
         distanceCovered: _currentRoute?.distanceKm ?? 0,
-        avgSpeed: 24.5 + _random.nextDouble() * 10,
-        stopsCompleted: _currentRoute?.stops.length ?? 0,
+        avgSpeed:        24.5 + _random.nextDouble() * 10,
+        stopsCompleted:  _currentRoute?.stops.length ?? 0,
       );
     }
 
-    _currentTrip = null;
-    _currentRoute = null;
+    _currentTrip   = null;
+    _currentRoute  = null;
     _currentStopIndex = 0;
-    _traveledPath = [];
+    _traveledPath  = [];
     notifyListeners();
   }
 
@@ -154,12 +151,7 @@ class TripProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  LatLng _interpolate(LatLng a, LatLng b, double t) {
-    return LatLng(
-      a.latitude + (b.latitude - a.latitude) * t,
-      a.longitude + (b.longitude - a.longitude) * t,
-    );
-  }
+  // ── Internal helpers ──────────────────────────────────────────
 
   void _startGpsSimulation() {
     _gpsTimer?.cancel();
@@ -168,24 +160,21 @@ class TripProvider extends ChangeNotifier {
       final poly = _currentRoute!.polyline;
       if (poly.length < 2) return;
 
-      // Advance along the polyline
       _segmentProgress += 0.02 + _random.nextDouble() * 0.03;
 
       if (_segmentProgress >= 1.0) {
         _segmentProgress = 0.0;
         _polySegmentIndex++;
         if (_polySegmentIndex >= poly.length - 1) {
-          // Reached end of polyline, loop back to near-end
           _polySegmentIndex = poly.length - 2;
-          _segmentProgress = 1.0;
+          _segmentProgress  = 1.0;
         }
       }
 
       final from = poly[_polySegmentIndex];
-      final to = poly[_polySegmentIndex + 1];
+      final to   = poly[_polySegmentIndex + 1];
       _currentLocation = _interpolate(from, to, _segmentProgress);
 
-      // Build traveled path: all completed segments + partial current
       _traveledPath = [
         for (int i = 0; i <= _polySegmentIndex; i++) poly[i],
         _currentLocation,
@@ -195,8 +184,7 @@ class TripProvider extends ChangeNotifier {
 
       if (_currentTrip != null) {
         _currentTrip = _currentTrip!.copyWith(
-          distanceCovered:
-              _currentTrip!.distanceCovered + 0.02 + _random.nextDouble() * 0.03,
+          distanceCovered: _currentTrip!.distanceCovered + 0.02 + _random.nextDouble() * 0.03,
         );
       }
 
@@ -204,9 +192,50 @@ class TripProvider extends ChangeNotifier {
     });
   }
 
+  /// Send location to backend every 5 seconds during active trip.
+  void _startLocationSync() {
+    _locationUpdateTimer?.cancel();
+    _locationUpdateTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (_status != TripStatus.active) return;
+      unawaited(_sendLocation());
+    });
+  }
+
+  Future<void> _sendLocation() async {
+    try {
+      await _api.updateLocation(
+        latitude:  _currentLocation.latitude,
+        longitude: _currentLocation.longitude,
+        speed:     _currentSpeed,
+      );
+    } catch (_) {}  // silent — don't crash trip on network hiccup
+  }
+
+  void _syncPassengers(int count) {
+    String level = 'low';
+    if (count > 40)      level = 'full';
+    else if (count > 25) level = 'high';
+    else if (count > 10) level = 'medium';
+    unawaited(_sendPassengers(level));
+  }
+
+  Future<void> _sendPassengers(String level) async {
+    try {
+      await _api.updatePassengers(level);
+    } catch (_) {}
+  }
+
+  LatLng _interpolate(LatLng a, LatLng b, double t) {
+    return LatLng(
+      a.latitude  + (b.latitude  - a.latitude)  * t,
+      a.longitude + (b.longitude - a.longitude) * t,
+    );
+  }
+
   @override
   void dispose() {
     _gpsTimer?.cancel();
+    _locationUpdateTimer?.cancel();
     super.dispose();
   }
 }

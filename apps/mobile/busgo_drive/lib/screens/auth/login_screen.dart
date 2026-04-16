@@ -173,15 +173,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 16),
                 ],
 
-                // Driver ID
-                _buildLabel('DRIVER ID / USERNAME'),
+                // Email or Driver Code
+                _buildLabel('EMAIL OR DRIVER CODE'),
                 const SizedBox(height: 6),
                 _buildInputField(
                   controller: _employeeIdController,
-                  hint: 'DRV-00142',
+                  hint: 'namal@email.com or DRV-001',
                   icon: Icons.person_outline,
                   validator: (v) =>
-                      v == null || v.isEmpty ? 'Driver ID is required' : null,
+                      v == null || v.isEmpty ? 'Email or Driver Code is required' : null,
                 ),
                 const SizedBox(height: 16),
 

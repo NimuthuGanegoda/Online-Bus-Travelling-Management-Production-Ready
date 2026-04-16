@@ -3,7 +3,7 @@ import { createAuditLog } from '../../../utils/audit.utils.js';
 
 const DRIVER_SELECT = `
   id, driver_code, full_name, email, phone, rating,
-  status, pending_review, created_at, updated_at,
+  status, pending_review, route_id, created_at, updated_at,
   bus_routes ( id, route_number, route_name )
 `;
 

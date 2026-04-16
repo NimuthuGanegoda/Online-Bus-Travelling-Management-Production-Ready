@@ -21,6 +21,9 @@ import emergencyRoutes     from './modules/emergency/emergency.routes.js';
 import notificationsRoutes from './modules/notifications/notifications.routes.js';
 import searchesRoutes      from './modules/searches/searches.routes.js';
 
+// Driver router
+import driverRoutes from './modules/driver/driver.routes.js';
+
 // Admin routers
 import adminAuthRoutes          from './modules/admin/auth/admin.auth.routes.js';
 import adminDashboardRoutes     from './modules/admin/dashboard/admin.dashboard.routes.js';
@@ -93,6 +96,7 @@ app.use('/api/ratings',        ratingsRoutes);
 app.use('/api/emergency',      emergencyRoutes);
 app.use('/api/notifications',  notificationsRoutes);
 app.use('/api/searches/recent', searchesRoutes);
+app.use('/api/driver',          driverRoutes);
 
 // ── Admin API Routes (/api/admin/*) ───────────────────────────
 app.use('/api/admin/auth',          adminAuthRoutes);

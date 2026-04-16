@@ -22,9 +22,9 @@ export async function getDashboardStats() {
       .gte('boarded_at', `${today}T00:00:00Z`)
       .lte('boarded_at', `${today}T23:59:59Z`),
     supabase.from('emergency_alerts').select('*', { count: 'exact', head: true })
-      .in('status', ['sent', 'acknowledged']),
+      .in('status', ['pending', 'sent', 'acknowledged']),
     supabase.from('emergency_alerts').select('*', { count: 'exact', head: true })
-      .eq('status', 'sent'),
+      .in('status', ['pending', 'sent']),
     supabase.from('drivers').select('*', { count: 'exact', head: true })
       .eq('status', 'pending'),
     supabase.from('users').select('*', { count: 'exact', head: true }),

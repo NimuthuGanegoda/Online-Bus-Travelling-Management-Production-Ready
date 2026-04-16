@@ -1,6 +1,9 @@
 export interface Bus {
   id: string;      // bus_number for display (e.g. AA-001)
   _uuid?: string;  // real UUID used for API calls
+  routeId?: string;    // route UUID for fetching stops
+  routeColor?: string; // hex color from bus_routes table
+  driverId?: string;   // driver UUID
   registration: string;
   route: number;
   driver: string;
@@ -16,6 +19,7 @@ export interface Bus {
 }
 
 export interface StandbyBus {
+  _uuid: string;
   id: string;
   registration: string;
 }
@@ -28,6 +32,7 @@ export interface Driver {
   email: string;
   phone: string;
   route: number | null;
+  routeId?: string; // UUID of assigned route (needed for edit form)
   status: 'Active' | 'Inactive' | 'Pending';
   pendingReview?: boolean;
 }

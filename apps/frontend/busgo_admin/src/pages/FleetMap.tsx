@@ -1,41 +1,127 @@
 import { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { RefreshCw, Crosshair, Bus, User } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { RefreshCw, Crosshair, Bus, User, X, Phone, Mail, Star } from 'lucide-react';
 import { fetchAllBuses } from '../services/buses.service';
-import type { Bus as BusType } from '../types';
+import { fetchAdminRoutes } from '../services/routes.service';
+import { fetchRouteStops, type BusStop } from '../services/stops.service';
+import { fetchRoadPolyline } from '../services/routing.service';
+import { fetchDriverById } from '../services/drivers.service';
+import type { Bus as BusType, Driver } from '../types';
 import './FleetMap.css';
 
-function createBusIcon(passengers: number, capacity: number, status: string) {
+// Colombo Fort — fallback when a bus has no GPS fix yet
+const COLOMBO_DEFAULT = { lat: 6.9271, lng: 79.8612 };
+
+const FALLBACK_COLORS = ['#1565C0', '#2E7D32', '#7B1FA2', '#E65100', '#00838F', '#AD1457', '#F57F17'];
+
+interface RouteLayer {
+  routeId: string;
+  routeNumber: number;
+  color: string;
+  stops: BusStop[];
+  polyline: [number, number][];
+}
+
+function withFallbackCoords(bus: BusType): BusType & { lat: number; lng: number } {
+  return {
+    ...bus,
+    lat: bus.lat ?? COLOMBO_DEFAULT.lat,
+    lng: bus.lng ?? COLOMBO_DEFAULT.lng,
+  };
+}
+
+function MapFlyTo({ bus }: { bus: BusType | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (bus?.lat && bus?.lng) {
+      map.flyTo([bus.lat, bus.lng], 15, { duration: 1.2 });
+    }
+  }, [bus, map]);
+  return null;
+}
+
+function createBusIcon(passengers: number, capacity: number, status: string, selected: boolean) {
   const ratio = passengers / capacity;
   let color = '#4caf50';
   if (status === 'Breakdown') color = '#e74c3c';
   else if (ratio > 0.8) color = '#e74c3c';
   else if (ratio > 0.5) color = '#f59e0b';
 
+  const size = selected ? 40 : 32;
+  const border = selected ? '3px solid #FFD700' : '3px solid #fff';
+
   return L.divIcon({
     className: 'custom-bus-marker',
-    html: `<div style="background:${color};width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);">${passengers}</div>`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
+    html: `<div style="background:${color};width:${size}px;height:${size}px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;border:${border};box-shadow:0 2px 8px rgba(0,0,0,0.35);">${passengers}</div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
   });
 }
 
 export default function FleetMap() {
+  const location = useLocation();
+  const trackBusId = (location.state as any)?.trackBusId as string | undefined;
+
   const [allBuses, setAllBuses] = useState<BusType[]>([]);
   const [selectedBus, setSelectedBus] = useState<BusType | null>(null);
-  const [routeFilter, setRouteFilter] = useState('all');
+  const [routeLayers, setRouteLayers] = useState<RouteLayer[]>([]);
+  const [loadingRoutes, setLoadingRoutes] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
   const [crowdFilter, setCrowdFilter] = useState('all');
+  const [driverModal, setDriverModal] = useState<Driver | null>(null);
+  const [driverLoading, setDriverLoading] = useState(false);
+  const [driverError, setDriverError] = useState<string | null>(null);
 
+  // Load buses and all routes in parallel, then build road polylines for every route
   useEffect(() => {
-    fetchAllBuses()
-      .then((buses) => {
-        const withGps = buses.filter((b) => b.lat && b.lng);
-        setAllBuses(withGps);
-        if (withGps.length > 0) setSelectedBus(withGps[0]);
+    setLoadingRoutes(true);
+
+    Promise.all([fetchAllBuses(), fetchAdminRoutes(true)])
+      .then(async ([buses, routes]) => {
+        const normalised = buses.map(withFallbackCoords);
+        setAllBuses(normalised);
+
+        // Auto-select from Track button or default to first bus
+        const target = trackBusId
+          ? normalised.find((b) => b.id === trackBusId) ?? normalised[0]
+          : normalised[0];
+        if (target) setSelectedBus(target);
+
+        // Build a layer for EVERY route (not just ones with buses)
+        const layers = await Promise.all(
+          routes.map(async (route, idx) => {
+            const color = route.color ?? FALLBACK_COLORS[idx % FALLBACK_COLORS.length];
+            try {
+              const stops = (await fetchRouteStops(route.id)).sort(
+                (a, b) => a.stop_order - b.stop_order,
+              );
+              const polyline = stops.length >= 2 ? await fetchRoadPolyline(stops) : [];
+              return {
+                routeId: route.id,
+                routeNumber: Number(route.route_number),
+                color,
+                stops,
+                polyline,
+              } as RouteLayer;
+            } catch {
+              return {
+                routeId: route.id,
+                routeNumber: Number(route.route_number),
+                color,
+                stops: [],
+                polyline: [],
+              } as RouteLayer;
+            }
+          }),
+        );
+
+        setRouteLayers(layers);
+        setLoadingRoutes(false);
       })
       .catch(console.error);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getCrowdLevel = (bus: BusType) => {
@@ -51,18 +137,32 @@ export default function FleetMap() {
     return true;
   });
 
-  const crowdPercent = selectedBus ? Math.round((selectedBus.passengers / selectedBus.capacity) * 100) : 0;
+  const handleViewDriver = async () => {
+    if (!selectedBus?.driverId) return;
+    setDriverLoading(true);
+    setDriverError(null);
+    try {
+      const driver = await fetchDriverById(selectedBus.driverId);
+      setDriverModal(driver);
+    } catch {
+      setDriverError('Failed to load driver profile');
+    } finally {
+      setDriverLoading(false);
+    }
+  };
+
+  // Colour for a given bus based on its route layer
+  const routeColorFor = (bus: BusType) =>
+    routeLayers.find((r) => r.routeId === bus.routeId)?.color ?? '#1565C0';
+
+  const crowdPercent = selectedBus
+    ? Math.round((selectedBus.passengers / selectedBus.capacity) * 100)
+    : 0;
   const crowdLabel = selectedBus ? getCrowdLevel(selectedBus) : 'low';
 
   return (
     <div className="fleet-map-page">
       <div className="fleet-map-toolbar">
-        <select value={routeFilter} onChange={(e) => setRouteFilter(e.target.value)} className="map-filter">
-          <option value="all">All Routes</option>
-          <option value="138">Route 138</option>
-          <option value="220">Route 220</option>
-          <option value="176">Route 176</option>
-        </select>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="map-filter">
           <option value="all">All Status</option>
           <option value="Active">Active</option>
@@ -75,8 +175,20 @@ export default function FleetMap() {
           <option value="high">High</option>
         </select>
         <div className="map-toolbar-right">
-          <button className="map-btn"><RefreshCw size={16} /> Refresh</button>
-          <button className="map-btn primary"><Crosshair size={16} /> Center Map</button>
+          {loadingRoutes && (
+            <span style={{ fontSize: 12, color: '#6b7280', marginRight: 8 }}>Loading routes…</span>
+          )}
+          <button className="map-btn" onClick={() => window.location.reload()}>
+            <RefreshCw size={16} /> Refresh
+          </button>
+          <button
+            className="map-btn primary"
+            onClick={() => {
+              if (selectedBus) setSelectedBus({ ...selectedBus });
+            }}
+          >
+            <Crosshair size={16} /> Center Map
+          </button>
         </div>
       </div>
 
@@ -92,97 +204,250 @@ export default function FleetMap() {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               attribution='&copy; OpenStreetMap contributors'
             />
+            <MapFlyTo bus={selectedBus} />
+
+            {/* ── All route polylines (road-snapped, uniform style) ── */}
+            {routeLayers.map((layer) =>
+              layer.polyline.length >= 2 ? (
+                <Polyline
+                  key={layer.routeId}
+                  positions={layer.polyline}
+                  pathOptions={{
+                    color: layer.color,
+                    weight: 5,
+                    opacity: 0.85,
+                  }}
+                />
+              ) : null,
+            )}
+
+            {/* ── Stop markers for every route ── */}
+            {routeLayers.map((layer) =>
+              layer.stops.map((stop, idx) => (
+                <CircleMarker
+                  key={stop.junction_id}
+                  center={[stop.latitude, stop.longitude]}
+                  radius={idx === 0 || idx === layer.stops.length - 1 ? 8 : 4}
+                  pathOptions={{
+                    color: '#fff',
+                    fillColor:
+                      idx === 0
+                        ? '#2E7D32'
+                        : idx === layer.stops.length - 1
+                        ? '#C62828'
+                        : layer.color,
+                    fillOpacity: 1,
+                    weight: 2,
+                  }}
+                >
+                  <Tooltip>
+                    <strong>Route {layer.routeNumber}</strong><br />
+                    {stop.stop_order}. {stop.stop_name}
+                  </Tooltip>
+                </CircleMarker>
+              )),
+            )}
+
+            {/* ── Bus markers ── */}
             {filteredBuses.map((bus) => (
               <Marker
                 key={bus.id}
                 position={[bus.lat!, bus.lng!]}
-                icon={createBusIcon(bus.passengers, bus.capacity, bus.status)}
-                eventHandlers={{
-                  click: () => setSelectedBus(bus),
-                }}
+                icon={createBusIcon(
+                  bus.passengers,
+                  bus.capacity,
+                  bus.status,
+                  selectedBus?.id === bus.id,
+                )}
+                eventHandlers={{ click: () => setSelectedBus(bus) }}
               >
-                <Popup>{bus.id}</Popup>
+                <Popup>
+                  <strong>{bus.id}</strong> — Route {bus.route}<br />
+                  Driver: {bus.driver}<br />
+                  {bus.passengers}/{bus.capacity} passengers
+                </Popup>
               </Marker>
             ))}
           </MapContainer>
-          <div className="map-crowd-legend">
-            <span className="legend-title">CROWD LEVEL</span>
-            <span className="legend-item"><span className="legend-dot green"></span> Low</span>
-            <span className="legend-item"><span className="legend-dot yellow"></span> Moderate</span>
-            <span className="legend-item"><span className="legend-dot red"></span> High</span>
-          </div>
+
+          {/* Route colour legend */}
+          {routeLayers.length > 0 && (
+            <div className="map-crowd-legend" style={{ gap: 10 }}>
+              <span className="legend-title">ROUTES</span>
+              {routeLayers.map((r) => (
+                <span key={r.routeId} className="legend-item">
+                  <span className="legend-dot" style={{ background: r.color }} />
+                  {r.routeNumber}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="bus-detail-panel">
           {!selectedBus ? (
             <div style={{ padding: '32px', textAlign: 'center', color: '#6b7280', fontSize: '13px' }}>
-              {allBuses.length === 0 ? 'No buses with GPS data' : 'Click a bus to view details'}
+              {allBuses.length === 0 ? 'No buses found' : 'Click a bus to view details'}
             </div>
           ) : (
-          <>
-          <div className="bus-detail-header">
-            <h2>{selectedBus.id} — Selected</h2>
-            <p>Route {selectedBus.route} · Last updated {selectedBus.lastUpdated ?? '—'}</p>
-          </div>
-
-          <div className="bus-detail-rows">
-            <div className="detail-row">
-              <span className="detail-label">BUS ID</span>
-              <span className="detail-value">{selectedBus.id}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">ROUTE</span>
-              <span className="detail-value">Route {selectedBus.route}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">DRIVER</span>
-              <span className="detail-value">{selectedBus.driver}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">SPEED</span>
-              <span className="detail-value">{selectedBus.speed ?? 0} km/h</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">STATUS</span>
-              <span className={`detail-status ${selectedBus.status.toLowerCase().replace(' ', '-')}`}>
-                <span className="status-indicator"></span>
-                {selectedBus.status}
-              </span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">PASSENGERS</span>
-              <span className="detail-value">{selectedBus.passengers} / {selectedBus.capacity}</span>
-            </div>
-            <div className="passenger-bar-wrap">
-              <div className="passenger-bar">
-                <div className={`passenger-bar-fill ${crowdLabel}`} style={{ width: `${crowdPercent}%` }}></div>
+            <>
+              <div className="bus-detail-header">
+                <h2>{selectedBus.id} — Selected</h2>
+                <p>Route {selectedBus.route} · Last updated {selectedBus.lastUpdated ?? '—'}</p>
               </div>
-              <span className={`crowd-label ${crowdLabel}`}>
-                {crowdLabel.charAt(0).toUpperCase() + crowdLabel.slice(1)} — {crowdPercent}%
-              </span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">NEXT STOP</span>
-              <span className="detail-value bold">{selectedBus.nextStop || 'N/A'}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">ETA</span>
-              <span className="detail-value bold">{selectedBus.eta ? `${selectedBus.eta} minutes` : 'N/A'}</span>
-            </div>
-          </div>
-          </>
+
+              <div className="bus-detail-rows">
+                <div className="detail-row">
+                  <span className="detail-label">BUS ID</span>
+                  <span className="detail-value">{selectedBus.id}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">ROUTE</span>
+                  <span className="detail-value" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{
+                      width: 12, height: 12, borderRadius: 2,
+                      background: routeColorFor(selectedBus), display: 'inline-block',
+                    }} />
+                    Route {selectedBus.route}
+                  </span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">DRIVER</span>
+                  <span className="detail-value">{selectedBus.driver}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">SPEED</span>
+                  <span className="detail-value">{selectedBus.speed ?? 0} km/h</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">STATUS</span>
+                  <span className={`detail-status ${selectedBus.status.toLowerCase().replace(' ', '-')}`}>
+                    <span className="status-indicator" />
+                    {selectedBus.status}
+                  </span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">PASSENGERS</span>
+                  <span className="detail-value">{selectedBus.passengers} / {selectedBus.capacity}</span>
+                </div>
+                <div className="passenger-bar-wrap">
+                  <div className="passenger-bar">
+                    <div className={`passenger-bar-fill ${crowdLabel}`} style={{ width: `${crowdPercent}%` }} />
+                  </div>
+                  <span className={`crowd-label ${crowdLabel}`}>
+                    {crowdLabel.charAt(0).toUpperCase() + crowdLabel.slice(1)} — {crowdPercent}%
+                  </span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">NEXT STOP</span>
+                  <span className="detail-value bold">{selectedBus.nextStop || 'N/A'}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">ETA</span>
+                  <span className="detail-value bold">{selectedBus.eta ? `${selectedBus.eta} minutes` : 'N/A'}</span>
+                </div>
+              </div>
+            </>
           )}
 
           <div className="bus-detail-actions">
             <button className="detail-action-btn primary">
               <Bus size={16} /> Deploy Standby Bus
             </button>
-            <button className="detail-action-btn secondary">
-              <User size={16} /> View Driver Profile
+            <button
+              className="detail-action-btn secondary"
+              onClick={handleViewDriver}
+              disabled={driverLoading || !selectedBus?.driverId}
+            >
+              <User size={16} />
+              {driverLoading ? 'Loading…' : 'View Driver Profile'}
             </button>
+            {driverError && (
+              <p style={{ color: '#ef4444', fontSize: 12, margin: '4px 0 0' }}>{driverError}</p>
+            )}
           </div>
         </div>
       </div>
+
+      {/* ── Driver Profile Modal ── */}
+      {driverModal && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
+          }}
+          onClick={() => setDriverModal(null)}
+        >
+          <div
+            style={{
+              background: '#fff', borderRadius: 16, width: 360,
+              boxShadow: '0 20px 60px rgba(0,0,0,0.25)', overflow: 'hidden',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{ background: '#0f2942', padding: '20px 20px 16px', position: 'relative' }}>
+              <button
+                onClick={() => setDriverModal(null)}
+                style={{
+                  position: 'absolute', top: 14, right: 14,
+                  background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8,
+                  color: '#fff', cursor: 'pointer', padding: 4, display: 'flex',
+                }}
+              >
+                <X size={18} />
+              </button>
+              <div style={{
+                width: 56, height: 56, borderRadius: '50%', background: '#1a6fa8',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 22, fontWeight: 700, color: '#fff', marginBottom: 10,
+              }}>
+                {driverModal.name.charAt(0).toUpperCase()}
+              </div>
+              <div style={{ color: '#fff', fontSize: 17, fontWeight: 700 }}>{driverModal.name}</div>
+              <div style={{ color: '#93c5fd', fontSize: 12, marginTop: 2 }}>
+                {driverModal.id} · {driverModal.status}
+              </div>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '16px 20px' }}>
+              {[
+                { icon: <Mail size={15} />, label: 'Email', value: driverModal.email },
+                { icon: <Phone size={15} />, label: 'Phone', value: driverModal.phone },
+                {
+                  icon: <Star size={15} />, label: 'Rating',
+                  value: `${driverModal.rating.toFixed(1)} / 5.0`,
+                },
+                {
+                  icon: <Bus size={15} />, label: 'Assigned Route',
+                  value: driverModal.route ? `Route ${driverModal.route}` : 'Unassigned',
+                },
+              ].map(({ icon, label, value }) => (
+                <div key={label} style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '10px 0', borderBottom: '1px solid #f3f4f6',
+                }}>
+                  <span style={{ color: '#6b7280' }}>{icon}</span>
+                  <span style={{ color: '#9ca3af', fontSize: 12, width: 90 }}>{label}</span>
+                  <span style={{ color: '#111827', fontSize: 13, fontWeight: 600 }}>{value}</span>
+                </div>
+              ))}
+
+              {/* Status badge */}
+              <div style={{ marginTop: 14, display: 'flex', justifyContent: 'center' }}>
+                <span style={{
+                  padding: '4px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700,
+                  background: driverModal.status === 'Active' ? '#dcfce7' : '#fee2e2',
+                  color: driverModal.status === 'Active' ? '#15803d' : '#b91c1c',
+                }}>
+                  {driverModal.status}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

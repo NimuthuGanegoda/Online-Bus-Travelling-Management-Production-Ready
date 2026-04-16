@@ -4,7 +4,9 @@ import { Plus, Download, Bus, Pencil, MapPin, RotateCcw, Wrench, X, CheckCircle 
 import {
   fetchAllBuses, fetchStandbyBuses, fetchFleetStats,
   updateBusStatus, registerBus, fetchRoutes, type FleetStats,
+  updateBusAssignment,
 } from '../services/buses.service';
+import { fetchDrivers } from '../services/drivers.service';
 import type { Bus as BusType, StandbyBus } from '../types';
 import './FleetMgmt.css';
 
@@ -17,10 +19,11 @@ export default function FleetMgmt() {
   const [routeFilter, setRouteFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [editBus, setEditBus] = useState<BusType | null>(null);
-  const [editForm, setEditForm] = useState({ driver_name: '', registration: '', route_id: '' });
+  const [editForm, setEditForm] = useState({ driver_id: '', registration: '', route_id: '' });
+  const [driverList, setDriverList] = useState<{ id: string; name: string }[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const [showRegister, setShowRegister] = useState(false);
-  const [routes, setRoutes] = useState<{ id: string; route_number: number; route_name: string }[]>([]);
+  const [routes, setRoutes] = useState<{ id: string; route_number: string | number; route_name: string }[]>([]);
   const [registerForm, setRegisterForm] = useState({ bus_number: '', route_id: '', registration: '', driver_name: '', driver_phone: '' });
   const [registerLoading, setRegisterLoading] = useState(false);
   const [registerError, setRegisterError] = useState<string | null>(null);
@@ -28,7 +31,7 @@ export default function FleetMgmt() {
   useEffect(() => {
     Promise.all([fetchAllBuses(), fetchStandbyBuses(), fetchFleetStats()])
       .then(([allBuses, standby, stats]) => {
-        setBuses(allBuses.filter((b) => b.status !== 'Standby'));
+        setBuses(allBuses);
         setStandbyBuses(standby);
         setFleetStats(stats);
       })
@@ -62,8 +65,9 @@ export default function FleetMgmt() {
         driver_name:  registerForm.driver_name.trim(),
         driver_phone: registerForm.driver_phone.trim() || undefined,
       });
-      // New bus starts as standby — add to standby grid
-      setStandbyBuses((prev) => [...prev, { id: newBus.id, registration: newBus.registration }]);
+      // Add to main table and standby grid
+      setBuses((prev) => [...prev, newBus]);
+      setStandbyBuses((prev) => [...prev, { _uuid: newBus._uuid ?? newBus.id, id: newBus.id, registration: newBus.registration }]);
       setFleetStats((prev) => ({ ...prev, total: prev.total + 1, standby: prev.standby + 1 }));
       setShowRegister(false);
       showToast(`Bus ${newBus.id} registered successfully`);
@@ -93,18 +97,30 @@ export default function FleetMgmt() {
     return true;
   });
 
-  const handleEdit = (bus: BusType) => {
+  const handleEdit = async (bus: BusType) => {
     setEditBus(bus);
-    setEditForm({ driver_name: bus.driver, registration: bus.registration === '—' ? '' : bus.registration, route_id: '' });
+    setEditForm({ driver_id: bus.driverId ?? '', registration: bus.registration === '—' ? '' : bus.registration, route_id: '' });
+    if (driverList.length === 0) {
+      try {
+        const drivers = await fetchDrivers({ status: 'active' });
+        setDriverList(drivers.map((d) => ({ id: d._uuid ?? d.id, name: d.name })));
+      } catch { /* ignore */ }
+    }
+    if (routes.length === 0) {
+      try {
+        const list = await fetchRoutes();
+        setRoutes(list);
+      } catch { /* ignore */ }
+    }
   };
 
   const handleEditSave = async () => {
     if (!editBus) return;
     try {
       const updated = await updateBusAssignment(editBus._uuid ?? editBus.id, {
-        driver_name:  editForm.driver_name || undefined,
+        driverId:     editForm.driver_id || undefined,
+        routeId:      editForm.route_id || undefined,
         registration: editForm.registration || undefined,
-        route_id:     editForm.route_id || undefined,
       });
       setBuses((prev) => prev.map((b) => (b.id === editBus.id ? updated : b)));
       showToast(`${editBus.id} updated successfully`);
@@ -114,8 +130,8 @@ export default function FleetMgmt() {
     setEditBus(null);
   };
 
-  const handleTrack = (_bus: BusType) => {
-    navigate('/admin/fleet-map');
+  const handleTrack = (bus: BusType) => {
+    navigate('/admin/fleet-map', { state: { trackBusId: bus.id } });
   };
 
   const handleRecall = async (bus: BusType) => {
@@ -138,8 +154,16 @@ export default function FleetMgmt() {
     }
   };
 
-  const handleDeploy = (busId: string) => {
-    showToast(`${busId} has been deployed`);
+  const handleDeploy = async (bus: StandbyBus) => {
+    try {
+      const updated = await updateBusStatus(bus._uuid, 'active');
+      setBuses((prev) => [...prev, updated]);
+      setStandbyBuses((prev) => prev.filter((b) => b._uuid !== bus._uuid));
+      setFleetStats((prev) => ({ ...prev, active: prev.active + 1, standby: prev.standby - 1 }));
+      showToast(`${bus.id} deployed successfully`);
+    } catch {
+      showToast('Failed to deploy bus');
+    }
   };
 
   if (loading) {
@@ -279,13 +303,17 @@ export default function FleetMgmt() {
                 />
               </div>
               <div className="fleet-modal-field">
-                <label>Driver Name</label>
-                <input
-                  type="text"
-                  value={editForm.driver_name}
-                  onChange={(e) => setEditForm((f) => ({ ...f, driver_name: e.target.value }))}
+                <label>Assign Driver</label>
+                <select
+                  value={editForm.driver_id}
+                  onChange={(e) => setEditForm((f) => ({ ...f, driver_id: e.target.value }))}
                   className="fleet-modal-input"
-                />
+                >
+                  <option value="">— keep current driver —</option>
+                  {driverList.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
               </div>
               <div className="fleet-modal-field">
                 <label>Reassign Route</label>
@@ -342,17 +370,19 @@ export default function FleetMgmt() {
 
       <div className="fleet-section">
         <div className="fleet-section-header">
-          <h2>Active Buses <span className="section-count">{filteredBuses.length} buses</span></h2>
+          <h2>All Buses <span className="section-count">{filteredBuses.length} buses</span></h2>
           <div className="fleet-section-filters">
             <select value={routeFilter} onChange={(e) => setRouteFilter(e.target.value)} className="fleet-filter">
-              <option value="all">Route</option>
-              <option value="138">Route 138</option>
-              <option value="220">Route 220</option>
-              <option value="176">Route 176</option>
+              <option value="all">All Routes</option>
+              {[...new Set(buses.map((b) => b.route).filter(Boolean))].sort((a, b) => Number(a) - Number(b)).map((r) => (
+                <option key={r} value={String(r)}>Route {r}</option>
+              ))}
             </select>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="fleet-filter">
-              <option value="all">Status</option>
+              <option value="all">All Status</option>
               <option value="Active">Active</option>
+              <option value="Standby">Standby</option>
+              <option value="In Repair">In Repair</option>
               <option value="Breakdown">Breakdown</option>
             </select>
           </div>
@@ -433,7 +463,7 @@ export default function FleetMgmt() {
             <div key={bus.id} className="standby-card">
               <div className="standby-card-id">{bus.id}</div>
               <div className="standby-card-reg">{bus.registration}</div>
-              <button className="standby-deploy-btn" onClick={() => handleDeploy(bus.id)}>
+              <button className="standby-deploy-btn" onClick={() => handleDeploy(bus)}>
                 <Bus size={14} /> Deploy
               </button>
             </div>

@@ -22,6 +22,9 @@ export function mapBus(b: any): Bus {
   return {
     _uuid:        b.id,                  // real UUID for API calls
     id:           b.bus_number ?? b.id,  // display ID shown in table
+    routeId:      b.bus_routes?.id ?? b.route_id ?? undefined,
+    routeColor:   b.bus_routes?.color ?? undefined,
+    driverId:     b.drivers?.id ?? b.driver_id ?? undefined,
     registration: b.registration ?? '—',
     route:        Number(b.bus_routes?.route_number ?? b.route_number ?? 0),
     driver:       b.drivers?.full_name ?? b.driver_name ?? '—',
@@ -68,6 +71,8 @@ function timeAgo(dateStr: string): string {
 export function mapEmergency(a: any): EmergencyAlert {
   const busNumber = a.buses?.bus_number ?? a.bus_id ?? '—';
   const routeNumber = Number(a.buses?.bus_routes?.route_number ?? a.route_number ?? 0);
+  // Driver name: prefer linked drivers row (driver app), fall back to denormalised bus field
+  const driverName = a.drivers?.full_name ?? a.buses?.driver_name ?? a.driver_name ?? '—';
 
   return {
     id:       a.id,
@@ -75,7 +80,7 @@ export function mapEmergency(a: any): EmergencyAlert {
     type:     alertTypeMap[a.alert_type] ?? 'ACCIDENT',
     title:    a.description ?? a.alert_type ?? 'Emergency',
     busId:    busNumber ? `Bus #${busNumber}` : '—',
-    driver:   a.buses?.driver_name ?? a.driver_name ?? '—',
+    driver:   driverName,
     location: a.location ?? (a.latitude ? `${Number(a.latitude).toFixed(4)}, ${Number(a.longitude).toFixed(4)}` : 'Unknown'),
     route:    routeNumber,
     time:     a.created_at
@@ -106,6 +111,7 @@ export function mapDriver(d: any): Driver & { _uuid: string } {
     email:         d.email,
     phone:         d.phone ?? '—',
     route:         d.bus_routes?.route_number ? Number(d.bus_routes.route_number) : null,
+    routeId:       d.bus_routes?.id ?? d.route_id ?? undefined,
     status:        driverStatusMap[d.status] ?? 'Inactive',
     pendingReview: d.pending_review ?? false,
   };
