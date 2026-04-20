@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, Map, AlertTriangle, Bus, Users, FileText, LogOut, Route,
+  LayoutDashboard, Map, AlertTriangle, Bus, Users, FileText, LogOut, Route, CreditCard,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './Sidebar.css';
@@ -17,6 +17,7 @@ const navItems = [
   ]},
   { label: 'ADMIN', items: [
     { to: '/admin/users',       icon: Users,          label: 'Users' },
+    { to: '/admin/payments',    icon: CreditCard,     label: 'Payments' },
     { to: '/admin/audit-logs',  icon: FileText,       label: 'Audit Logs' },
   ]},
 ];

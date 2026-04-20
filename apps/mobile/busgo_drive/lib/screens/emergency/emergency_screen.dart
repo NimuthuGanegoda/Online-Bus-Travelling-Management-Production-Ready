@@ -6,7 +6,7 @@ import '../../core/constants/app_colors.dart';
 import '../../providers/emergency_provider.dart';
 import '../../providers/trip_provider.dart';
 import '../../providers/auth_provider.dart';
-import '../dashboard/main_shell.dart';
+
 
 class EmergencyScreen extends StatefulWidget {
   const EmergencyScreen({super.key});
@@ -38,10 +38,108 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF2F4F8),
       body: Consumer<EmergencyProvider>(
-        builder: (context, emergency, _) {
-          if (emergency.isSent) return _buildSentView(emergency);
-          return _buildAlertForm(emergency);
-        },
+        builder: (context, emergency, _) => _buildAlertForm(emergency),
+      ),
+    );
+  }
+
+  void _showSuccessDialog(EmergencyProvider emergency) {
+    final typeLabel = _typeLabelMap[emergency.selectedType] ?? emergency.selectedType ?? 'Alert';
+    final typeEmoji = _typeEmojiMap[emergency.selectedType] ?? '🚨';
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withValues(alpha: 0.55),
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Green checkmark icon
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4CAF50),
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.check_rounded, size: 40, color: Colors.white),
+              ),
+              const SizedBox(height: 20),
+              // Title
+              Text(
+                'Alert Sent Successfully',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF2E7D32),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Emergency type
+              Text(
+                'Emergency type: $typeEmoji $typeLabel',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF37474F),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Sub message
+              Text(
+                'Help is on the way. Stay calm.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF78909C),
+                ),
+              ),
+              const SizedBox(height: 28),
+              // Close button
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    emergency.reset();
+                    _messageController.clear();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1565C0),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    'Close',
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -345,188 +443,6 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
   }
 
   // ═══════════════════════════════════════════════════════
-  //  SENT CONFIRMATION VIEW
-  // ═══════════════════════════════════════════════════════
-  Widget _buildSentView(EmergencyProvider emergency) {
-    final alert = emergency.activeAlert;
-    final typeLabel = _typeLabelMap[alert?.type] ?? alert?.type ?? 'Alert';
-    final time = alert != null
-        ? '${alert.timestamp.hour.toString().padLeft(2, '0')}:${alert.timestamp.minute.toString().padLeft(2, '0')}'
-        : '--:--';
-
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-        child: Column(
-          children: [
-            const SizedBox(height: 24),
-            // Success animation
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFE8F5E9), Color(0xFFC8E6C9)],
-                ),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.success.withValues(alpha: 0.2),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: const Icon(Icons.check_rounded,
-                  size: 52, color: AppColors.success),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Alert Sent Successfully',
-              style: GoogleFonts.inter(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Dispatch has been notified. Help is on the way.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                color: const Color(0xFF6B7A8D),
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // ── Alert details card ──
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE0E8F0)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  _detailRow(
-                    Icons.warning_amber_rounded,
-                    'Incident Type',
-                    typeLabel,
-                    AppColors.danger,
-                  ),
-                  _divider(),
-                  _detailRow(
-                    Icons.access_time_rounded,
-                    'Time Reported',
-                    time,
-                    AppColors.primaryLight,
-                  ),
-                  _divider(),
-                  _detailRow(
-                    Icons.gps_fixed_rounded,
-                    'GPS Location',
-                    alert != null
-                        ? '${alert.latitude.toStringAsFixed(4)}, ${alert.longitude.toStringAsFixed(4)}'
-                        : 'N/A',
-                    AppColors.success,
-                  ),
-                  _divider(),
-                  _detailRow(
-                    Icons.verified_rounded,
-                    'Alert Status',
-                    'Sent to Dispatch',
-                    const Color(0xFF1565C0),
-                  ),
-                  if (alert != null && alert.description.isNotEmpty) ...[
-                    _divider(),
-                    _detailRow(
-                      Icons.message_rounded,
-                      'Message',
-                      alert.description,
-                      const Color(0xFF7B1FA2),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 28),
-
-            // ── Action buttons ──
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  HapticFeedback.mediumImpact();
-                  emergency.cancelAlert();
-                  _messageController.clear();
-                },
-                icon: const Icon(Icons.cancel_outlined, size: 20),
-                label: Text(
-                  'Cancel Alert',
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.danger,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  emergency.reset();
-                  _messageController.clear();
-                  context
-                      .findAncestorStateOfType<MainShellState>()
-                      ?.switchToTab(0);
-                },
-                icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                label: Text(
-                  'Back to Dashboard',
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                  side: const BorderSide(
-                      color: Color(0xFFD0D7E0), width: 1.5),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════
   //  OPTION CARD
   // ═══════════════════════════════════════════════════════
   Widget _buildOption({
@@ -660,64 +576,18 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
     );
   }
 
-  Widget _detailRow(IconData icon, String label, String value, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, size: 17, color: color),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF9E9E9E),
-                    letterSpacing: 0.3,
-                  ),
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  value,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _divider() {
-    return const Divider(height: 1, color: Color(0xFFF0F2F5));
-  }
-
-  void _sendAlert(EmergencyProvider emergency) {
+  Future<void> _sendAlert(EmergencyProvider emergency) async {
     final tp = context.read<TripProvider>();
     final auth = context.read<AuthProvider>();
-    emergency.sendAlert(
+    await emergency.sendAlert(
       driverId: auth.driver?.id ?? 'DRV-2841',
       tripId: tp.currentTrip?.id ?? 'NO-TRIP',
       latitude: tp.currentLocation.latitude,
       longitude: tp.currentLocation.longitude,
     );
+    if (mounted && emergency.isSent) {
+      _showSuccessDialog(emergency);
+    }
   }
 
   static const _typeLabelMap = {
@@ -726,6 +596,14 @@ class _EmergencyScreenState extends State<EmergencyScreen> {
     'criminal': 'Criminal Activity',
     'accident': 'Accident',
     'other': 'Other',
+  };
+
+  static const _typeEmojiMap = {
+    'medical': '🏥',
+    'breakdown': '🔧',
+    'criminal': '🛡️',
+    'accident': '🚗',
+    'other': '⚠️',
   };
 }
 

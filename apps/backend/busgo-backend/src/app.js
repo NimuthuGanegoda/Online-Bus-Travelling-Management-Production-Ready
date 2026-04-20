@@ -20,6 +20,7 @@ import ratingsRoutes       from './modules/ratings/ratings.routes.js';
 import emergencyRoutes     from './modules/emergency/emergency.routes.js';
 import notificationsRoutes from './modules/notifications/notifications.routes.js';
 import searchesRoutes      from './modules/searches/searches.routes.js';
+import paymentsRoutes      from './modules/payments/payments.routes.js';
 
 // Driver router
 import driverRoutes from './modules/driver/driver.routes.js';
@@ -36,6 +37,7 @@ import adminAuditRoutes         from './modules/admin/audit/admin.audit.routes.j
 import adminNotificationsRoutes from './modules/admin/notifications/admin.notifications.routes.js';
 import adminRoutesRoutes        from './modules/admin/routes/admin.routes.routes.js';
 import adminStopsRoutes         from './modules/admin/stops/admin.stops.routes.js';
+import adminPaymentsRoutes      from './modules/admin/payments/admin.payments.routes.js';
 
 const app = express();
 
@@ -96,6 +98,7 @@ app.use('/api/ratings',        ratingsRoutes);
 app.use('/api/emergency',      emergencyRoutes);
 app.use('/api/notifications',  notificationsRoutes);
 app.use('/api/searches/recent', searchesRoutes);
+app.use('/api/payments',        paymentsRoutes);
 app.use('/api/driver',          driverRoutes);
 
 // ── Admin API Routes (/api/admin/*) ───────────────────────────
@@ -110,6 +113,7 @@ app.use('/api/admin/audit',         adminAuditRoutes);
 app.use('/api/admin/notifications', adminNotificationsRoutes);
 app.use('/api/admin/routes',        adminRoutesRoutes);
 app.use('/api/admin/stops',         adminStopsRoutes);
+app.use('/api/admin/payments',      adminPaymentsRoutes);
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use(notFoundHandler);

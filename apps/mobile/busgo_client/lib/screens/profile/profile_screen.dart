@@ -302,7 +302,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           _buildMenuItem(
                             icon: Icons.credit_card,
                             label: 'Payment Methods',
-                            onTap: () {},
+                            onTap: () => context.push('/payment'),
                           ),
                           _buildMenuItem(
                             icon: Icons.help_outline,

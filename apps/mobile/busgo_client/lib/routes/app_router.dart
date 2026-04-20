@@ -15,6 +15,7 @@ import '../screens/qr/qr_card_screen.dart';
 import '../screens/rating/driver_rating_screen.dart';
 import '../screens/history/ride_history_screen.dart';
 import '../screens/profile/edit_profile_screen.dart';
+import '../screens/payment/payment_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
 
 final GoRouter appRouter = GoRouter(
@@ -107,6 +108,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/edit-profile',
       builder: (context, state) => const EditProfileScreen(),
+    ),
+    GoRoute(
+      path: '/payment',
+      builder: (context, state) => const PaymentScreen(),
     ),
   ],
 );

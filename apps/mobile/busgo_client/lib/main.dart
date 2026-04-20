@@ -19,6 +19,7 @@ import 'services/rating_service.dart';
 import 'services/token_service.dart';
 import 'services/trip_service.dart';
 import 'services/user_service.dart';
+import 'services/payment_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -57,6 +58,7 @@ class BusGoApp extends StatelessWidget {
     final tripService  = TripService(apiClient);
     final ratingService    = RatingService(apiClient);
     final emergencyService = EmergencyService(apiClient);
+    final paymentService   = PaymentService(apiClient);
 
     return MultiProvider(
       providers: [
@@ -74,6 +76,9 @@ class BusGoApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => EmergencyProvider(emergencyService),
+        ),
+        Provider<PaymentService>(
+          create: (_) => paymentService,
         ),
       ],
       child: MaterialApp.router(

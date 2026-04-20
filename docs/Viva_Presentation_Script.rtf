@@ -1,0 +1,522 @@
+{\rtf1\ansi\deff0
+{\fonttbl
+{\f0\froman\fcharset0 Times New Roman;}
+{\f1\fswiss\fcharset0 Arial;}
+{\f2\fmodern\fcharset0 Courier New;}
+}
+{\colortbl ;
+\red0\green0\blue0;
+\red26\green82\blue118;
+\red23\green32\blue42;
+\red39\green174\blue96;
+\red231\green76\blue60;
+\red52\green73\blue94;
+}
+
+\paperw12240\paperh15840\margl1440\margr1440\margt1440\margb1440
+
+{\f1\fs40\b\cf2 BUSGO \emdash Online Bus Travelling Management System\par}
+{\f1\fs28\b\cf3 Viva Presentation Script \emdash Front-End Developer\par}
+\par\par
+
+{\f1\fs20\cf6\i [NOTE TO PRESENTER: Sections marked with square brackets are stage directions or reminders. Speak naturally \emdash this script is a guide, not something to read word-for-word.]\par}
+\par\line\par
+
+{\f1\fs32\b\cf2 SECTION 1 \emdash OPENING & INTRODUCTION\par}
+{\f1\fs20\cf6\i [Duration: ~2 minutes | Stand confident, make eye contact]\par}
+\par
+
+{\f1\fs22 Good morning / afternoon, respected panel members.\par
+\par
+My name is [Your Name], and I served as the Front-End Developer for our group project titled \b BusGo \emdash an Online Bus Travelling Management System\b0  designed specifically for the Sri Lankan public transport context.\par
+\par
+My contribution to this project spans two key technology areas:\par
+\par
+{\pard\li720
+\b 1.\b0  A \b React-based Admin Web Panel\b0  \emdash a full-featured browser dashboard for transport administrators to manage the entire bus network in real time.\par
+\b 2.\b0  Three \b Flutter mobile applications\b0  \emdash a Passenger app, a Driver app, and a Ticket Scanner app \emdash each serving a different actor in the bus system.\par
+\par}
+In the next few minutes, I will walk you through the problem we solved, the architecture I designed and implemented, the key features of each application, the technology decisions I made, and the challenges I overcame during development.\par
+}
+\par\line\par
+
+{\f1\fs32\b\cf2 SECTION 2 \emdash PROBLEM STATEMENT & PROJECT CONTEXT\par}
+{\f1\fs20\cf6\i [Duration: ~2 minutes]\par}
+\par
+
+{\f1\fs22 Sri Lanka\rquote s public bus network is one of the most heavily used transport systems in the country, yet it operates almost entirely without digital support. Commuters have no way to know where a bus is, how full it is, or when it will arrive. Drivers have no digital tools to report emergencies or log trips. Administrators manage fleets manually with no real-time visibility.\par
+\par
+\b BusGo solves all three problems simultaneously.\b0\par
+\par
+The system provides:\par
+{\pard\li720
+\f1\bullet  Real-time bus tracking on live maps for both passengers and administrators.\par
+\bullet  A structured digital workflow for drivers to log trips, report emergencies, and receive route information.\par
+\bullet  A QR-code-based ticketing system for quick and paperless boarding.\par
+\bullet  A centralized admin control panel to oversee the full fleet, manage users, respond to emergencies, and maintain audit trails.\par
+\par}
+The entire system is built around three Colombo metropolitan bus routes: Route 138 (Nugegoda to Colombo Fort), Route 163 (Rajagiriya to Maharagama), and Route 171 (Colombo 4 to Athurugiriya) \emdash routes chosen because of their high ridership and geographic coverage of the Colombo district.\par
+}
+\par\line\par
+
+{\f1\fs32\b\cf2 SECTION 3 \emdash SYSTEM ARCHITECTURE OVERVIEW\par}
+{\f1\fs20\cf6\i [Duration: ~2 minutes | Point to architecture diagram if available]\par}
+\par
+
+{\f1\fs22 Before diving into my front-end work specifically, let me briefly describe how the overall system is structured so my work makes sense in context.\par
+\par
+\b BusGo follows a layered client-server architecture with four front-end applications connecting to a shared backend:\par\b0
+\par
+{\pard\li720
+\b Backend:\b0  A Node.js and Express.js REST API server, using Supabase as the cloud database and Supabase Realtime for live event broadcasting.\par
+\b Admin Panel:\b0  A React 19 + TypeScript web application \emdash my work.\par
+\b Passenger Mobile App (BusGo Client):\b0  A Flutter application for passengers \emdash my work.\par
+\b Driver Mobile App (BusGo Drive):\b0  A Flutter application for bus drivers \emdash my work.\par
+\b Scanner App (BusGo Scanner):\b0  A Flutter application for ticket conductors \emdash my work.\par
+\par}
+All four front-end applications communicate with the backend through a secured REST API, and the mobile apps also subscribe to Supabase Realtime for live bus location broadcasts.\par
+\par
+My role was entirely on the \b client layer\b0 . I was responsible for designing and implementing all four of these front-end applications, ensuring they were production-ready, responsive, and connected correctly to the backend API.\par
+}
+\par\line\par
+
+{\f1\fs32\b\cf2 SECTION 4 \emdash ADMIN WEB PANEL (REACT)\par}
+{\f1\fs20\cf6\i [Duration: ~5\endash 6 minutes | Demo the panel if possible]\par}
+\par
+
+{\f1\fs28\b\cf2 4.1 Technology Stack \emdash Admin Panel\par}
+\par
+{\f1\fs22 For the Admin Panel, I chose the following stack:\par
+\par
+{\pard\li720
+\b React 19\b0  with \b TypeScript\b0  \emdash React is the industry standard for building component-based web UIs. TypeScript was chosen to catch type errors at compile time rather than at runtime, which is critical for a production system where data shapes from the API can be complex.\par
+\b Vite\b0  \emdash Used as the build tool for its extremely fast hot module replacement during development and optimised production bundles.\par
+\b React Router v7\b0  \emdash For client-side routing with protected routes.\par
+\b React Leaflet\b0  \emdash For rendering interactive maps. Leaflet was chosen over Google Maps because it is open-source, does not require API key billing, and integrates well with OpenStreetMap tiles.\par
+\b Axios\b0  \emdash For API communication with the backend, wrapped in a central service layer.\par
+\b Lucide React\b0  \emdash For a consistent, lightweight icon library throughout the UI.\par
+\par}
+}
+
+{\f1\fs28\b\cf2 4.2 Application Structure\par}
+\par
+{\f1\fs22 The admin panel is structured around a \b protected route system\b0 . Any user who is not authenticated is automatically redirected to the login page. Once logged in as an administrator, the panel uses a persistent \b sidebar layout\b0  with a main content area, giving the feel of a native desktop application.\par
+\par
+The routes are:\par
+{\pard\li720
+\b /admin/login\b0  \emdash Authentication page\par
+\b /admin/dashboard\b0  \emdash The main control centre\par
+\b /admin/fleet-map\b0  \emdash Full-screen live map\par
+\b /admin/emergencies\b0  \emdash Emergency alert management\par
+\b /admin/fleet\b0  \emdash Bus fleet management\par
+\b /admin/users\b0  \emdash User management (drivers, passengers, admins)\par
+\b /admin/routes\b0  \emdash Route and bus stop management\par
+\b /admin/audit-logs\b0  \emdash Admin action audit trail\par
+\par}
+I implemented \b authentication using React Context API\b0 . The AuthContext stores the admin session, handles login and logout, and persists the access token in localStorage. Every protected route checks the context before rendering \emdash unauthenticated access always redirects to login.\par
+}
+\par
+
+{\f1\fs28\b\cf2 4.3 Dashboard Page\par}
+\par
+{\f1\fs22 The Dashboard is the first screen an admin sees after logging in. It is designed to give an immediate, at-a-glance overview of the entire bus network.\par
+\par
+\b Key features:\b0\par
+{\pard\li720
+\b Live statistics cards:\b0  Show active buses, passengers today, pending emergency alerts, and standby buses. These figures auto-refresh on a polling interval so the admin always sees current data without manually refreshing the page.\par
+\b Mini live map:\b0  An embedded Leaflet map showing all buses currently on the road. Each bus is represented by a coloured circular marker. The colour is dynamic: \b green\b0  means the bus is running normally, \b amber\b0  means the bus is more than 50\% full, and \b red\b0  means the bus is over 80\% capacity or has broken down. The number displayed inside each marker is the current passenger count.\par
+\b Notification panel:\b0  A bell icon in the header opens a sliding notification dropdown showing recent system alerts, driver sign-ups, and emergency events. Admins can mark individual notifications as read or clear all at once.\par
+\b Active emergency strip:\b0  A list of the most recent unresolved emergency alerts is displayed directly on the dashboard, colour-coded by type \emdash red for Medical, orange for Accident, purple for Criminal, and orange-red for Breakdown.\par
+\par}
+The key technical decision on the Dashboard was using \b polling with setInterval\b0  rather than WebSockets for the statistics. This was a deliberate choice: the backend\rquote s data refresh rate is low enough that every-10-second polling is sufficient, and it avoids the complexity of maintaining a persistent WebSocket connection for non-critical UI elements.\par
+}
+\par
+
+{\f1\fs28\b\cf2 4.4 Fleet Map Page\par}
+\par
+{\f1\fs22 The Fleet Map page is one of the most technically complex parts of the admin panel. It gives administrators a full-screen, interactive view of all buses, their routes, and their stops.\par
+\par
+\b Key features:\b0\par
+{\pard\li720
+\b Live bus markers:\b0  Every active bus appears as a clickable marker on the map. The size of the marker increases when selected so the admin can clearly see which bus they are inspecting.\par
+\b Route polylines:\b0  When an admin selects a route from the sidebar, the system fetches road-accurate polylines from an OSRM (Open Source Routing Machine) API and draws them as coloured lines on the map. Each route has a unique colour assigned from a predefined palette.\par
+\b Bus stop markers:\b0  Bus stops for each route are drawn as circular markers on the polyline.\par
+\b Bus detail sidebar:\b0  Clicking any bus marker opens a side panel showing the bus number, registration plate, route, current passenger count and capacity, driver\rquote s name, phone number, email, and star rating.\par
+\b Fly-to animation:\b0  When an admin selects a bus from the list, the map smoothly animates (using Leaflet\rquote s flyTo method) to centre on that bus\rquote s location.\par
+\b Default coordinates:\b0  If a bus does not yet have a GPS fix, it falls back to Colombo Fort coordinates (6.9271, 79.8612) rather than crashing the map render.\par
+\par}
+The most interesting engineering challenge here was the \b route polyline system\b0 . Rather than drawing straight lines between stops, I integrated with an OSRM routing API to get road-following paths. I built a \b RouteLayer data structure\b0  that holds the route ID, colour, stop list, and polyline coordinates together, so the map can efficiently layer multiple routes with their stops and paths simultaneously.\par
+}
+\par
+
+{\f1\fs28\b\cf2 4.5 Emergencies Page\par}
+\par
+{\f1\fs22 The Emergencies page allows administrators to view, filter, and respond to emergency alerts reported by drivers.\par
+\par
+\b Key features:\b0\par
+{\pard\li720
+\b Alert summary cards:\b0  Four stat cards at the top show total alerts, new alerts, responded alerts, and resolved alerts.\par
+\b Filter panel:\b0  Admins can filter by status (New, Responded, Resolved) and by emergency type (Medical, Accident, Criminal, Breakdown) simultaneously.\par
+\b Alert cards:\b0  Each alert shows a type icon, colour-coded by severity, the time it was reported, the location, and its current status.\par
+\b Detail modal:\b0  Clicking an alert opens a full detail view with all the information about the incident.\par
+\b Status workflow:\b0  Admins can transition an alert through the workflow: New \f2\fs20 \u8594?\f1\fs22  Responded \f2\fs20 \u8594?\f1\fs22  Resolved.\par
+\b Deploy bus:\b0  Admins can deploy a standby bus to an emergency location directly from this screen.\par
+\b View on map:\b0  Clicking \ldblquote View on Map\rdblquote  navigates to the Fleet Map page so the admin can see the emergency in geographic context.\par
+\par}
+The page polls the backend every 10 seconds, so new emergencies submitted by drivers appear without the admin needing to manually refresh.\par
+}
+\par
+
+{\f1\fs28\b\cf2 4.6 Fleet Management Page\par}
+\par
+{\f1\fs22 This page allows administrators to manage the bus fleet inventory.\par
+\par
+\b Key features:\b0\par
+{\pard\li720
+\b Fleet stats bar:\b0  Shows total buses, active, standby, in-repair, and broken-down counts.\par
+\b Bus table:\b0  A filterable table of all buses. Admins can filter by route and by status simultaneously.\par
+\b Register new bus:\b0  A modal form allows registering a brand-new bus, assigning it a route and a driver.\par
+\b Edit bus:\b0  Admins can reassign a bus to a different driver, update its registration, or change its route.\par
+\b Status update:\b0  Admins can change a bus\rquote s operational status (Active, Standby, In Repair).\par
+\par}
+}
+\par
+
+{\f1\fs28\b\cf2 4.7 User Management Page\par}
+\par
+{\f1\fs22 This page manages the three types of users in the system: Drivers, Passengers, and Admins. I designed it as a \b tabbed interface\b0  so all three user types are accessible from one screen without navigation.\par
+\par
+\b Key features:\par\b0
+{\pard\li720
+\b Driver tab:\b0  Shows all drivers with their approval status. Admins can approve or reject new driver registrations, activate or suspend drivers, edit their details, or delete their accounts.\par
+\b Passenger tab:\b0  Shows all registered passengers. Admins can suspend, activate, or delete passenger accounts.\par
+\b Admin tab:\b0  Manages the admin accounts themselves. Super-admins can create, edit, or remove other administrators.\par
+\b Search and filters:\b0  Each tab has a search bar plus status and route filters.\par
+\b Inline forms:\b0  All add and edit operations are handled through modal dialogs, keeping the user on the same page rather than navigating away.\par
+\par}
+}
+\par
+
+{\f1\fs28\b\cf2 4.8 Routes Page\par}
+\par
+{\f1\fs22 The Routes page lets administrators manage bus routes and their stops.\par
+\par
+\b Key features:\b0\par
+{\pard\li720\b Route cards:\b0  Each route is shown as a card with its route number, name, origin, destination, and a coloured accent.\par
+\b CRUD operations:\b0  Admins can create new routes, edit existing ones, toggle a route\rquote s active status, or delete it.\par
+\b Stops panel:\b0  Clicking a route opens a \b StopsPanel component\b0  that I built as a reusable sub-component. It lists all the bus stops on that route and allows adding, editing, or removing stops.\par
+\par}
+}
+\par
+
+{\f1\fs28\b\cf2 4.9 Audit Logs Page\par}
+\par
+{\f1\fs22 The Audit Logs page provides a complete, paginated record of every administrative action taken in the system.\par
+\par
+\b Key features:\b0\par
+{\pard\li720\b Action badges:\b0  Each log entry has a colour-coded badge indicating the action type: green for CREATE and APPROVE, red for DELETE and REJECT, blue for UPDATE and LOGIN, amber for DEPLOY, and so on.\par
+\b Date range filter:\b0  Admins can filter logs by date range.\par
+\b Admin and action filters:\b0  Logs can also be filtered by which admin performed the action and what type of action it was.\par
+\b Pagination:\b0  Logs are paginated at 50 records per page to keep the UI responsive.\par
+\par}
+This page was important from a governance and accountability perspective. Every significant action in the system \emdash creating a user, deploying a bus, resolving an emergency \emdash is recorded and traceable to a specific administrator.\par
+}
+\par\line\par
+
+{\f1\fs32\b\cf2 SECTION 5 \emdash FLUTTER MOBILE APPLICATIONS\par}
+{\f1\fs20\cf6\i [Duration: ~6\endash 7 minutes | Demo the apps or show screenshots]\par}
+\par
+
+{\f1\fs28\b\cf2 5.1 Technology Stack \emdash Flutter Apps\par}
+\par
+{\f1\fs22 All three mobile apps are built with Flutter, using the following core packages:\par
+\par
+{\pard\li720
+\b Flutter 3.8+ with Dart:\b0  Chosen for its single-codebase approach to Android and iOS development, excellent performance through native compilation, and a rich widget library.\par
+\b Provider:\b0  For state management. I chose Provider because it is lightweight, officially recommended by the Flutter team, and keeps the separation between UI and business logic clean.\par
+\b go_router:\b0  For declarative, URL-based navigation. This is important for handling deep links and the authenticated shell pattern.\par
+\b flutter_map:\b0  For rendering maps, using OpenStreetMap tiles. This avoids Google Maps API billing and is fully open-source.\par
+\b Supabase Flutter:\b0  For subscribing to Realtime bus location broadcasts.\par
+\b Dio:\b0  For HTTP API communication with the backend, paired with a TokenService that automatically injects JWT tokens into every request header.\par
+\b qr_flutter:\b0  For generating and rendering the passenger QR code.\par
+\b flutter_secure_storage:\b0  For securely persisting authentication tokens on the device.\par
+\b google_fonts:\b0  For clean, consistent typography across all apps.\par
+\par}
+All three apps share the same design language: a dark navy primary colour (\b #0A2342\b0 ), a medium blue secondary (\b #1565C0\b0 ), and a light grey surface (\b #F5F7FA\b0 ), creating a professional, transit-system aesthetic.\par
+}
+\par
+
+{\f1\fs28\b\cf2 5.2 BusGo Client \emdash Passenger Mobile App\par}
+\par
+{\f1\fs22 The Passenger app is the primary public-facing product. It is used by bus commuters in Colombo to find buses, track them live, report emergencies, and manage their digital identity.\par
+}
+\par
+
+{\f1\fs24\b\cf3 Authentication Flow\par}
+\par
+{\f1\fs22 The app opens on a \b Splash Screen\b0  that checks for a saved token and either navigates the user directly to the home screen or to the login screen. The \b Login Screen\b0  uses a staggered animation \emdash each form element fades and slides in with a slight delay, giving the screen a polished, app-like feel rather than a plain static form.\par
+\par
+I implemented \b Remember Me\b0  functionality using flutter_secure_storage, which persists the refresh token securely in the device\rquote s keychain so users stay logged in between app sessions. The Register screen handles new passenger sign-ups with field validation, and the Forgot Password screen sends a reset link via the backend.\par
+}
+\par
+
+{\f1\fs24\b\cf3 Dashboard Screen\par}
+\par
+{\f1\fs22 The Dashboard is the main home screen of the passenger app. It shows:\par
+{\pard\li720
+\b Mini route map:\b0  A live-animated mini-map at the top showing the three main Colombo routes (138, 163, 171) with animated bus markers that actually move along the route polylines in real time, simulating live bus positions.\par
+\b Nearby buses list:\b0  Below the map, a scrollable list of nearby buses shows each bus\rquote s route number, direction, distance from the user, and current passenger count with a crowd indicator.\par
+\b BusCard widget:\b0  I built a reusable BusCard widget that is used both on the Dashboard and in the Search screen, ensuring visual consistency.\par
+\b CrowdIndicator widget:\b0  A custom widget I designed that shows occupancy as a colour-coded bar \emdash green, amber, or red \emdash alongside a text label like \ldblquote Low\rdblquote , \ldblquote Moderate\rdblquote , or \ldblquote High\rdblquote .\par
+\par}
+The bus animation on the dashboard uses a \b Timer.periodic\b0  to advance each bus\rquote s position along its polyline every 3 seconds, creating a smooth real-time feel even in areas without a live GPS signal from the bus.\par
+}
+\par
+
+{\f1\fs24\b\cf3 Live Map Screen\par}
+\par
+{\f1\fs22 The Live Map is the full-screen interactive map for passengers. It features:\par
+{\pard\li720
+\b Real route polylines:\b0  The app calls the OSRM routing API to fetch road-accurate polylines for all three bus routes simultaneously, so the lines follow actual roads rather than straight lines between stops.\par
+\b Animated live buses:\b0  Three bus markers move along these polylines in real time. I used a custom interpolation algorithm to smoothly position each bus between waypoints based on elapsed time.\par
+\b User location dot:\b0  A pulsing blue dot indicates the user\rquote s current position (set to Colombo Fort for demonstration). The pulse animation is implemented using a looping AnimationController.\par
+\b Bus selection:\b0  Tapping a bus marker reveals a bottom card showing the route name, crowd level, and status.\par
+\par}
+}
+\par
+
+{\f1\fs24\b\cf3 Route Search Screen\par}
+\par
+{\f1\fs22 The Search screen allows passengers to find buses by destination:\par
+{\pard\li720
+A destination text field with a \b live autocomplete suggestion list\b0  that filters as the user types.\par
+Results show all buses serving that destination with their route numbers, directions, and crowd levels.\par
+\par}
+}
+\par
+
+{\f1\fs24\b\cf3 QR Card Screen\par}
+\par
+{\f1\fs22 Every passenger has a unique digital QR card. This screen:\par
+{\pard\li720
+Fetches the user\rquote s profile from the UserProvider.\par
+Generates a QR code using the passenger\rquote s unique QR code string (or falls back to a BUSGO-[userID] format).\par
+Displays it as a physical-looking card with the user\rquote s name and ID, ready to be scanned by the conductor.\par
+\par}
+}
+\par
+
+{\f1\fs24\b\cf3 Emergency Screen\par}
+\par
+{\f1\fs22 Passengers can submit an emergency report from within the app. The screen presents categorised emergency type buttons and an optional free-text details field. Submissions are sent to the backend where they become visible to administrators on the Emergency Management page immediately.\par
+}
+\par
+
+{\f1\fs24\b\cf3 Additional Screens\par}
+\par
+{\f1\fs22 {\pard\li720
+\b Alerts Screen:\b0  Shows system notifications and service alerts.\par
+\b Ride History Screen:\b0  Lists the passenger\rquote s past trips.\par
+\b Driver Rating Screen:\b0  Allows passengers to rate their driver after a trip.\par
+\b Profile Screen:\b0  Shows and allows editing of the passenger\rquote s account details.\par
+\par}
+}
+\par
+
+{\f1\fs28\b\cf2 5.3 BusGo Drive \emdash Driver Mobile App\par}
+\par
+{\f1\fs22 The Driver app is designed for bus drivers. It is a focused, distraction-minimised application that gives drivers exactly the information they need during their shift.\par
+}
+\par
+
+{\f1\fs24\b\cf3 Driver Dashboard\par}
+\par
+{\f1\fs22 The driver\rquote s home screen is purpose-built for driving:\par
+{\pard\li720
+\b Passenger gauge:\b0  A large, visually prominent gauge shows current passenger count against total seat capacity (50 seats). The fill colour changes from green to amber to red as the bus fills up, giving the driver an instant status read without taking their eyes off the road for long.\par
+\b Map preview:\b0  A compact flutter_map widget shows the driver\rquote s current position on the route.\par
+\b Next stop card:\b0  Prominently displays the name of the next stop.\par
+\b Trip stats:\b0  Shows running trip statistics including distance covered and time elapsed.\par
+\par}
+}
+\par
+
+{\f1\fs24\b\cf3 Active Trip Screen\par}
+\par
+{\f1\fs22 When a driver starts a trip:\par
+{\pard\li720
+A \b full live map\b0  displays the bus\rquote s position, the route polyline, and all upcoming stops.\par
+A trip information panel shows real-time stats.\par
+An \b SOS button\b0  is prominently placed in the header. A single tap allows the driver to submit an emergency alert to the admin panel instantly.\par
+\par}
+}
+\par
+
+{\f1\fs24\b\cf3 Route Management Screens\par}
+\par
+{\f1\fs22 {\pard\li720
+\b Route Selection Screen:\b0  Drivers pick their assigned route before starting a trip.\par
+\b Route Map Screen:\b0  A full-screen map view of the selected route with all stops marked.\par
+\b Trip Summary Screen:\b0  Shown after a trip ends, displaying the trip\rquote s statistics.\par
+\b My Rating Screen:\b0  Drivers can view their average passenger rating and individual reviews.\par
+\par}
+}
+\par
+
+{\f1\fs24\b\cf3 Emergency Screen\par}
+\par
+{\f1\fs22 A dedicated emergency reporting screen for drivers, with a clear, large-button interface for quick use under stress. Drivers can report the same emergency categories as passengers (Medical, Accident, Criminal, Breakdown).\par
+}
+\par
+
+{\f1\fs28\b\cf2 5.4 BusGo Scanner \emdash Ticket Scanner App\par}
+\par
+{\f1\fs22 The Scanner app is used by bus conductors to validate passenger QR tickets. It is the most focused of the three mobile apps, with a single primary function.\par
+}
+\par
+
+{\f1\fs24\b\cf3 Active Scanner Screen\par}
+\par
+{\f1\fs22 This is the heart of the scanner app:\par
+{\pard\li720
+\b Animated scanning viewfinder:\b0  I implemented a custom animated viewfinder using two AnimationControllers. A \b scan line\b0  moves up and down continuously through the camera frame, and the viewfinder frame itself \b pulses\b0  rhythmically, both implemented with looping Tween animations and CurvedAnimation easing. This provides visual feedback that the scanner is active and looking for a QR code.\par
+\b Dark overlay panels:\b0  Custom-painted dark overlay panels surround the scan area to focus attention on the scan zone, exactly like a professional barcode scanner experience.\par
+\b Bottom info panel:\b0  Shows instructions and the scanner\rquote s status.\par
+\par}
+}
+\par
+
+{\f1\fs24\b\cf3 Scan Result Screens\par}
+\par
+{\f1\fs22 {\pard\li720
+\b Scan Success Screen:\b0  Shown when a valid QR code is detected. Displays the passenger\rquote s name, ticket information, and a green confirmation UI.\par
+\b Scan Error Screen:\b0  Shown when an invalid or expired QR code is detected, with a clear error message and a retry button.\par
+\par}
+}
+\par\line\par
+
+{\f1\fs32\b\cf2 SECTION 6 \emdash KEY TECHNICAL DECISIONS & JUSTIFICATIONS\par}
+{\f1\fs20\cf6\i [Duration: ~3 minutes | Be ready to defend these choices]\par}
+\par
+
+{\f1\fs22 I want to highlight several technical decisions I made that the panel may ask about:\par
+\par
+\b 1. Why React for the Admin Panel and Flutter for mobile?\par\b0
+{\pard\li720 React is the dominant library for building complex, data-driven web applications. Its component model and rich ecosystem made it ideal for a multi-page admin dashboard with many interactive tables, modals, and maps. Flutter was chosen for mobile because it compiles to native ARM code, giving smooth 60fps animations which are critical for a map-heavy application, and because a single codebase runs on both Android and iOS.\par}
+\par
+\b 2. Why Provider over other state management solutions in Flutter?\par\b0
+{\pard\li720 Provider is lightweight, integrates naturally with Flutter\rquote s widget tree via InheritedWidget, and is officially recommended by the Flutter team. Given the complexity of our app \emdash which has Auth, Bus, Trip, User, and Emergency state domains \emdash Provider\rquote s multi-provider pattern kept each domain isolated and testable. More complex solutions like Bloc or Riverpod would have added boilerplate without significant benefit at our scale.\par}
+\par
+\b 3. Why React Context API for admin authentication rather than Redux or Zustand?\par\b0
+{\pard\li720 Authentication state in the admin panel is relatively simple: it is either authenticated or not, and it rarely changes. Context API with a single AuthProvider was the right fit. Redux would have been over-engineering for this use case.\par}
+\par
+\b 4. Why OpenStreetMap / Leaflet / flutter_map instead of Google Maps?\par\b0
+{\pard\li720 Google Maps requires a billing-enabled API key, which introduces cost uncertainty in a student project context. OpenStreetMap with Leaflet (web) and flutter_map (mobile) is fully open-source, freely available, and provides the same tile quality for our Colombo use case. The OSRM routing API provides road-accurate polylines without cost.\par}
+\par
+\b 5. Why Supabase Realtime for bus location instead of a custom WebSocket server?\par\b0
+{\pard\li720 Supabase Realtime provides a managed, scalable pub/sub infrastructure that we can connect to directly from Flutter without building and maintaining a custom WebSocket server. For bus location broadcasting, where the backend pushes updates to all subscribed clients, this pattern is exactly what Realtime is designed for.\par}
+\par
+\b 6. Why TypeScript over plain JavaScript for the admin panel?\par\b0
+{\pard\li720 The admin panel consumes multiple API endpoints with complex data shapes: buses, drivers, passengers, emergency alerts, routes, stops, audit logs. TypeScript\rquote s type system enforces that each API response is handled correctly, catching shape mismatches at compile time. Given the production-readiness goal of the project, TypeScript was a non-negotiable choice.\par}
+}
+\par\line\par
+
+{\f1\fs32\b\cf2 SECTION 7 \emdash CHALLENGES & HOW I SOLVED THEM\par}
+{\f1\fs20\cf6\i [Duration: ~2\endash 3 minutes | Show problem-solving ability]\par}
+\par
+
+{\f1\fs22 \b Challenge 1: Animating buses along road-accurate polylines in Flutter\par\b0
+{\pard\li720 The live map in the passenger and driver apps needed to show buses moving smoothly along actual road paths, not in straight lines. The OSRM API returned polylines as lists of lat/lng coordinates, but animating a marker along hundreds of waypoints smoothly required a custom interpolation algorithm. I solved this by computing the cumulative distance of the polyline, then using a progress value (0.0 to 1.0) that advances each timer tick. The current position is calculated by finding which segment the progress falls into and linearly interpolating between those two coordinates. This gives smooth, continuous movement along the road shape.\par}
+\par
+\b Challenge 2: Displaying route polylines on the admin panel map\par\b0
+{\pard\li720 The admin panel needed to show multiple route polylines simultaneously, each with a different colour, and each linked to its stops and buses. The challenge was that loading all routes, their stops, and their road polylines involves multiple async API calls. I designed a RouteLayer data structure that bundles the route ID, colour, stop list, and polyline together, and loaded all routes in parallel using Promise.all. Once all data was ready, the map rendered all layers atomically, preventing partial or flickering renders.\par}
+\par
+\b Challenge 3: Keeping the admin panel responsive across pages without a global state manager\par\b0
+{\pard\li720 With eight separate pages each making their own API calls, I needed to ensure that data was fresh without over-fetching. I solved this through a consistent pattern: each page fetches its own data on mount using useEffect, uses polling (setInterval) only where live data is genuinely needed (Dashboard and Emergencies), and all service calls are centralised in a typed service layer so the same logic is never duplicated.\par}
+\par
+\b Challenge 4: Making the scanner viewfinder feel professional\par\b0
+{\pard\li720 A scanner screen that feels like a real product needs precise visual feedback. I implemented two independent AnimationControllers in the scanner \emdash one for the scan line and one for the pulse glow \emdash with different durations and different easing curves (easeInOut for the scan line, linear for the pulse). Layering these with Stack and Positioned widgets produced the professional scanning UI without any third-party scanning animation library.\par}
+}
+\par\line\par
+
+{\f1\fs32\b\cf2 SECTION 8 \emdash DEMO WALKTHROUGH GUIDE\par}
+{\f1\fs20\cf6\i [Use this section to structure a live demo if time allows]\par}
+\par
+
+{\f1\fs22 If demonstrating live, follow this order:\par
+\par
+{\pard\li720
+\b Step 1:\b0  Open the Admin Panel. Show the Login page. Log in.\par
+\b Step 2:\b0  Walk through the Dashboard \emdash point out the stats cards, the live map with coloured bus markers, the notification bell, and the emergency strip.\par
+\b Step 3:\b0  Navigate to the Fleet Map. Select a bus. Show the fly-to animation, the driver detail panel, and a route polyline.\par
+\b Step 4:\b0  Navigate to Emergencies. Show the filter controls and the status workflow.\par
+\b Step 5:\b0  Navigate to User Management. Show the driver, passenger, and admin tabs. Open the add driver modal.\par
+\b Step 6:\b0  Show the Routes page and open the Stops panel for one route.\par
+\b Step 7:\b0  Show the Audit Logs with date filter.\par
+\b Step 8:\b0  Switch to the Passenger mobile app. Show the Dashboard with animated buses on the mini map.\par
+\b Step 9:\b0  Navigate to Live Map \emdash show the animated bus markers on the full map.\par
+\b Step 10:\b0  Show the QR Card screen.\par
+\b Step 11:\b0  Show the Driver app \emdash highlight the passenger gauge and the SOS button.\par
+\b Step 12:\b0  Show the Scanner app \emdash activate the animated viewfinder.\par
+\par}
+}
+\par\line\par
+
+{\f1\fs32\b\cf2 SECTION 9 \emdash ANTICIPATED VIVA QUESTIONS & ANSWERS\par}
+{\f1\fs20\cf6\i [Study these answers carefully]\par}
+\par
+
+{\f1\fs24\b\cf3 Q1: Why did you use React for the admin panel instead of a mobile app?\par}
+{\f1\fs22 The admin panel is designed for desktop use by transport administrators who sit at workstations. A web application gives them a large screen with multiple data panels visible simultaneously \emdash something a mobile screen cannot offer. React\rquote s component-based architecture also made it straightforward to build complex multi-panel layouts like the split-view Fleet Map page.\par}
+\par
+
+{\f1\fs24\b\cf3 Q2: What is the difference between the three Flutter apps?\par}
+{\f1\fs22 They serve three completely different actors. The Passenger app (BusGo Client) is for the general public \emdash finding buses, tracking them, holding a QR ticket. The Driver app (BusGo Drive) is for the person driving the bus \emdash it shows route information, passenger counts, and allows SOS reporting during a trip. The Scanner app (BusGo Scanner) is for the bus conductor \emdash its sole purpose is scanning passenger QR codes to validate tickets. Each app is scoped tightly to its user\rquote s role to keep the UI focused and easy to use in their specific context.\par}
+\par
+
+{\f1\fs24\b\cf3 Q3: How does the QR ticketing system work end to end?\par}
+{\f1\fs22 When a passenger registers, the backend generates a unique QR code string for their account and stores it in their profile. The Passenger app\rquote s QR Card screen fetches this string from the backend via the UserProvider and renders it as a QR code image using the qr_flutter package. When the conductor opens the Scanner app and points it at the passenger\rquote s screen, the app reads the QR code value and verifies it against the backend. A valid code shows the Scan Success screen; an invalid or expired code shows the Scan Error screen.\par}
+\par
+
+{\f1\fs24\b\cf3 Q4: How does the live map work? Is it actually real-time?\par}
+{\f1\fs22 The system has two layers of real-time data. In the mobile apps, Supabase Realtime is used to subscribe to bus location broadcasts pushed by the backend. Additionally, I implemented a client-side animation layer: even between Realtime updates, buses appear to move smoothly because the app animates markers along the known route polyline using timer-based interpolation. On the admin panel, bus positions are fetched through polling every few seconds via the REST API. For a production deployment with GPS hardware installed in buses, the Supabase Realtime channel would receive live GPS coordinates and broadcast them instantly.\par}
+\par
+
+{\f1\fs24\b\cf3 Q5: How did you handle authentication and security on the front end?\par}
+{\f1\fs22 In the admin panel, authentication uses JWT tokens stored in localStorage. The AuthContext intercepts all API calls via an Axios instance and attaches the access token to every request header. If a call returns 401 (Unauthorised), the user is redirected to the login page. In the Flutter apps, tokens are stored using flutter_secure_storage, which uses the device\rquote s secure enclave (Android Keystore / iOS Keychain) so tokens cannot be read by other apps or through file system access. The TokenService wraps all token read/write operations, and the ApiClient automatically injects the token into every Dio request header.\par}
+\par
+
+{\f1\fs24\b\cf3 Q6: What would you improve if you had more time?\par}
+{\f1\fs22 Several things. First, I would integrate actual GPS hardware tracking through the driver app so real bus positions replace the simulated movement. Second, I would add push notifications to the passenger app using Firebase Cloud Messaging so passengers receive alerts when their bus is approaching. Third, I would implement offline support in the Flutter apps using a local SQLite cache so the app is usable in low-connectivity areas, which is a real concern in suburban Sri Lanka. Fourth, I would add end-to-end tests for critical user flows like login, QR scanning, and emergency submission.\par}
+\par
+
+{\f1\fs24\b\cf3 Q7: How did you collaborate with your team as the front-end developer?\par}
+{\f1\fs22 My work depended entirely on the REST API contracts provided by the backend team. We agreed on API request and response formats early in the project and I built a typed service layer in both React (TypeScript interfaces) and Flutter (Dart model classes) that formalized these contracts. This meant I could develop front-end features against consistent interfaces even before the backend endpoints were fully implemented, by using mock data services. Once the backend was ready, I swapped the mock services for real API calls with minimal changes to the UI layer.\par}
+\par\line\par
+
+{\f1\fs32\b\cf2 SECTION 10 \emdash CONCLUSION\par}
+{\f1\fs20\cf6\i [Duration: ~1 minute | Finish strong]\par}
+\par
+
+{\f1\fs22 To summarise my contribution to BusGo:\par
+\par
+I designed and implemented \b four complete front-end applications\b0 : a React admin web panel and three Flutter mobile apps, all connected to a shared backend and all production-quality in terms of architecture, code organisation, and user experience.\par
+\par
+Across these applications, I built:\par
+{\pard\li720
+\bullet  Real-time interactive maps with animated bus tracking\par
+\bullet  A complete admin control centre with fleet, user, emergency, and route management\par
+\bullet  A QR-code-based digital ticketing system\par
+\bullet  Emergency reporting from both drivers and passengers\par
+\bullet  Secure JWT authentication on both web and mobile platforms\par
+\bullet  A professional, consistent design system across all four applications\par
+\par}
+The project demonstrates that a production-ready, multi-platform transport management system can be built with modern open-source tooling at effectively zero infrastructure cost, which is a highly relevant consideration for public sector deployments in developing economies like Sri Lanka.\par
+\par
+Thank you. I am happy to answer any questions.\par
+}
+\par\line\par
+
+{\f1\fs24\b\cf6 [END OF SCRIPT]\par}
+{\f1\fs20\cf6 Total estimated presentation time: 20\endash 25 minutes | Adjust pacing based on panel interruptions\par}
+}

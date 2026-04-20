@@ -9,6 +9,7 @@ import FleetMgmt from './pages/FleetMgmt';
 import UserManagement from './pages/UserManagement';
 import AuditLogs from './pages/AuditLogs';
 import RoutesPage from './pages/RoutesPage';
+import Payments from './pages/Payments';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -34,6 +35,7 @@ function AppRoutes() {
         <Route path="users"      element={<UserManagement />} />
         <Route path="audit-logs" element={<AuditLogs />} />
         <Route path="routes"     element={<RoutesPage />} />
+        <Route path="payments"   element={<Payments />} />
         <Route index             element={<Navigate to="dashboard" replace />} />
       </Route>
       <Route path="*" element={<Navigate to="/admin/login" replace />} />
