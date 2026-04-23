@@ -49,11 +49,11 @@ export const activeBuses: Bus[] = [
 ];
 
 export const standbyBuses: StandbyBus[] = [
-  { id: 'BUS-SBY-01', registration: 'WP-KH-0011' },
-  { id: 'BUS-SBY-02', registration: 'NW-5432-CD' },
-  { id: 'BUS-SBY-03', registration: 'SP-GH-7654' },
-  { id: 'BUS-SBY-04', registration: 'WP-PQ-2233' },
-  { id: 'BUS-SBY-05', registration: 'CP-AB-9988' },
+  { _uuid: 'sby-0001', id: 'BUS-SBY-01', registration: 'WP-KH-0011' },
+  { _uuid: 'sby-0002', id: 'BUS-SBY-02', registration: 'NW-5432-CD' },
+  { _uuid: 'sby-0003', id: 'BUS-SBY-03', registration: 'SP-GH-7654' },
+  { _uuid: 'sby-0004', id: 'BUS-SBY-04', registration: 'WP-PQ-2233' },
+  { _uuid: 'sby-0005', id: 'BUS-SBY-05', registration: 'CP-AB-9988' },
 ];
 
 export const drivers: Driver[] = [
