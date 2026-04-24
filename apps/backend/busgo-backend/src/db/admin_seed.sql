@@ -155,6 +155,6 @@ VALUES
     'LOGIN',
     'AdminSession',
     'a0000000-0000-0000-0000-000000000001',
-    'Initial seed login entry',
+    '{"message": "Initial seed login entry"}',
     '127.0.0.1'
   );
