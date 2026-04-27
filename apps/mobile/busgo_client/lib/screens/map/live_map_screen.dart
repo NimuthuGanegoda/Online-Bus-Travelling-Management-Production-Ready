@@ -39,6 +39,13 @@ class _LiveMapScreenState extends State<LiveMapScreen>
   // after the widget has been removed from the tree.
   BusProvider? _busProvider;
 
+  // Visual movement: per-bus simulated progress along its route polyline.
+  // Used only for the demo since no driver is currently broadcasting GPS.
+  // Real GPS updates from Supabase Realtime override these.
+  Timer? _movementTimer;
+  final Map<String, double> _simProgress = {}; // bus.busId → 0.0–1.0
+  final Map<String, bool> _simForward = {};
+
   // Lookup table mapping a bus route_number to OSRM waypoints (Colombo geography)
   static const _waypointsByRouteNumber = <String, List<LatLng>>{
     '138': RouteData.route138Waypoints,
@@ -89,11 +96,86 @@ class _LiveMapScreenState extends State<LiveMapScreen>
       };
       _routesLoaded = true;
     });
+    _startMovementSimulation();
+  }
+
+  // Animate buses along their route polylines for visual "live" feel.
+  // Real GPS broadcasts (via Supabase Realtime) take priority and will
+  // overwrite these positions in BusProvider when they arrive.
+  void _startMovementSimulation() {
+    _movementTimer?.cancel();
+    _movementTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      if (!mounted || _busProvider == null) return;
+      final buses = _busProvider!.nearbyBuses;
+      if (buses.isEmpty) return;
+      setState(() {
+        for (final bus in buses) {
+          final id = bus.busId ?? bus.stopId;
+          final polyline = _routePolylines[bus.routeNumber];
+          if (polyline == null || polyline.length < 2) continue;
+          // Initialize on first tick: place at progress matching the bus's
+          // current GPS position (closest point on the polyline).
+          if (!_simProgress.containsKey(id)) {
+            _simProgress[id] = _initialProgressFor(bus, polyline);
+            _simForward[id] = true;
+          }
+          var p = _simProgress[id]!;
+          var fwd = _simForward[id] ?? true;
+          // Step ~1.5% of the route per tick (≈ 60s end-to-end).
+          const step = 0.015;
+          p = fwd ? p + step : p - step;
+          if (p >= 1.0) {
+            p = 1.0;
+            fwd = false;
+          } else if (p <= 0.0) {
+            p = 0.0;
+            fwd = true;
+          }
+          _simProgress[id] = p;
+          _simForward[id] = fwd;
+        }
+      });
+    });
+  }
+
+  // Linearly interpolate a point along a polyline given a 0–1 progress value.
+  LatLng _interpolateAlong(List<LatLng> polyline, double progress) {
+    if (polyline.isEmpty) return const LatLng(0, 0);
+    if (polyline.length == 1) return polyline.first;
+    final p = progress.clamp(0.0, 1.0);
+    final segments = polyline.length - 1;
+    final exact = p * segments;
+    final i = exact.floor().clamp(0, segments - 1);
+    final t = exact - i;
+    final a = polyline[i];
+    final b = polyline[i + 1];
+    return LatLng(
+      a.latitude + (b.latitude - a.latitude) * t,
+      a.longitude + (b.longitude - a.longitude) * t,
+    );
+  }
+
+  double _initialProgressFor(BusModel bus, List<LatLng> polyline) {
+    if (bus.currentLat == null || bus.currentLng == null) return 0.0;
+    final point = LatLng(bus.currentLat!, bus.currentLng!);
+    var bestIdx = 0;
+    var bestDist = double.infinity;
+    for (var i = 0; i < polyline.length; i++) {
+      final dLat = polyline[i].latitude - point.latitude;
+      final dLng = polyline[i].longitude - point.longitude;
+      final d = dLat * dLat + dLng * dLng;
+      if (d < bestDist) {
+        bestDist = d;
+        bestIdx = i;
+      }
+    }
+    return polyline.length <= 1 ? 0.0 : bestIdx / (polyline.length - 1);
   }
 
   @override
   void dispose() {
     _arrivalSimTimer?.cancel();
+    _movementTimer?.cancel();
     _busProvider?.unsubscribeFromLiveLocations();
     _pulseController.dispose();
     super.dispose();
@@ -107,11 +189,17 @@ class _LiveMapScreenState extends State<LiveMapScreen>
   }
 
   LatLng? _busPosition(BusModel bus) {
+    final id = bus.busId ?? bus.stopId;
+    final polyline = _routePolylines[bus.routeNumber];
+
+    // Prefer the simulated walk-along position once it's been initialized.
+    if (polyline != null && polyline.length >= 2 && _simProgress.containsKey(id)) {
+      return _interpolateAlong(polyline, _simProgress[id]!);
+    }
     if (bus.currentLat != null && bus.currentLng != null) {
       return LatLng(bus.currentLat!, bus.currentLng!);
     }
     // Fallback: place at the start of its route polyline if known.
-    final polyline = _routePolylines[bus.routeNumber];
     if (polyline != null && polyline.isNotEmpty) return polyline.first;
     return null;
   }
@@ -837,18 +925,24 @@ class _LiveMapScreenState extends State<LiveMapScreen>
               ),
               Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: AppColors.iconBg,
-                      borderRadius: BorderRadius.circular(8),
+                  GestureDetector(
+                    onTap: () {
+                      final pos = _busPosition(bus);
+                      if (pos != null) _mapController.move(pos, 15.5);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: AppColors.iconBg,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text('Track',
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.secondary)),
                     ),
-                    child: const Text('Track',
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.secondary)),
                   ),
                   const SizedBox(width: 6),
                   GestureDetector(
