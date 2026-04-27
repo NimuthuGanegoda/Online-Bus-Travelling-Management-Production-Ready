@@ -35,13 +35,14 @@ class BusProvider extends ChangeNotifier {
 
   // ── Data loading ────────────────────────────────────────────────────────────
 
-  Future<void> loadNearbyBuses(double lat, double lng) async {
+  Future<void> loadNearbyBuses(double lat, double lng,
+      {double radius = 20.0}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      _nearbyBuses = await _busService.getNearbyBuses(lat, lng);
+      _nearbyBuses = await _busService.getNearbyBuses(lat, lng, radius: radius);
       if (_selectedBus == null && _nearbyBuses.isNotEmpty) {
         _selectedBus = _nearbyBuses.first;
       }
@@ -55,9 +56,10 @@ class BusProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> loadNearbyStops(double lat, double lng) async {
+  Future<void> loadNearbyStops(double lat, double lng,
+      {double radius = 20.0}) async {
     try {
-      _nearbyStops = await _busService.getNearbyStops(lat, lng);
+      _nearbyStops = await _busService.getNearbyStops(lat, lng, radius: radius);
       notifyListeners();
     } on AppException catch (e) {
       _errorMessage = ErrorHandler.userMessage(e);
@@ -82,14 +84,15 @@ class BusProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> loadAll(double lat, double lng) async {
+  Future<void> loadAll(double lat, double lng,
+      {double radius = 20.0}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     await Future.wait([
-      loadNearbyBuses(lat, lng),
-      loadNearbyStops(lat, lng),
+      loadNearbyBuses(lat, lng, radius: radius),
+      loadNearbyStops(lat, lng, radius: radius),
       loadAllRoutes(),
     ]);
 
