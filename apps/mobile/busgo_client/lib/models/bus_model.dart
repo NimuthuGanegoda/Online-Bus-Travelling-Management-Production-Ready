@@ -94,7 +94,8 @@ class BusModel {
 
     return BusModel(
       busId:               json['id']                    as String?,
-      routeId:             json['route_id']              as String?,
+      routeId:             route?['id']                  as String?
+                        ?? json['route_id']              as String?,
       busNumber:           json['bus_number']            as String?,
       driverPhone:         json['driver_phone']          as String?,
       currentLat:          (json['current_lat']  as num?)?.toDouble(),

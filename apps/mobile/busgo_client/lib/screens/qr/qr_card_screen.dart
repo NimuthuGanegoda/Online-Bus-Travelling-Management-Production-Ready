@@ -3,10 +3,28 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/constants/app_colors.dart';
+import '../../providers/trip_provider.dart';
 import '../../providers/user_provider.dart';
 
-class QrCardScreen extends StatelessWidget {
+class QrCardScreen extends StatefulWidget {
   const QrCardScreen({super.key});
+
+  @override
+  State<QrCardScreen> createState() => _QrCardScreenState();
+}
+
+class _QrCardScreenState extends State<QrCardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Refresh trip state from the backend so we always know whether there's
+    // an ongoing trip — even if the local provider is stale (e.g. user
+    // navigated to QR before the create-trip API call resolved).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<TripProvider>().loadTripHistory();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -250,13 +268,44 @@ class QrCardScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // Scan to Exit - navigates to driver rating
+                  // Scan to Exit — completes the current ongoing trip via the
+                  // backend (PATCH /api/trips/:id/alight) and navigates to the
+                  // rating screen. If there's no ongoing trip, it just opens
+                  // the rating screen without an API call.
                   SizedBox(
                     width: double.infinity,
                     height: 48,
                     child: ElevatedButton(
-                      onPressed: () {
-                        context.push('/rating');
+                      onPressed: () async {
+                        final tripProvider = context.read<TripProvider>();
+                        final messenger = ScaffoldMessenger.of(context);
+                        final router = GoRouter.of(context);
+
+                        if (tripProvider.ongoingTrip != null) {
+                          final completed = await tripProvider.alightTrip(
+                            fareLkr: 70, // demo fare; replace with real fare logic later
+                          );
+                          if (completed != null) {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                backgroundColor: AppColors.success,
+                                content: Text(
+                                  'Trip completed — fare Rs ${completed.fare.toStringAsFixed(0)}',
+                                  style: const TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            );
+                          }
+                        } else {
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'No active trip to exit. Board a bus from the map first.',
+                              ),
+                            ),
+                          );
+                        }
+                        router.push('/rating');
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1E5AA8),

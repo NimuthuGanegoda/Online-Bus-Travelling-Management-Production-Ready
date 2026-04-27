@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -9,6 +10,7 @@ import '../../core/constants/route_data.dart';
 import '../../models/bus_model.dart';
 import '../../models/stop_model.dart';
 import '../../providers/bus_provider.dart';
+import '../../providers/trip_provider.dart';
 import '../../services/routing_service.dart';
 import '../../widgets/crowd_indicator.dart';
 
@@ -238,6 +240,13 @@ class _LiveMapScreenState extends State<LiveMapScreen>
           ),
         );
         _tripPhase = _TripPhase.arrived;
+
+        // Mark the trip as completed in the backend with a fare estimate.
+        // PATCH /api/trips/:id/alight — moves status to 'completed' and the
+        // row will appear in Ride History on next refresh.
+        final fare = _estimateFare(polyline);
+        context.read<TripProvider>().alightTrip(fareLkr: fare);
+
         _arrivalSimTimer?.cancel();
         _arrivalSimTimer = Timer(const Duration(seconds: 5), () {
           if (!mounted) return;
@@ -249,6 +258,18 @@ class _LiveMapScreenState extends State<LiveMapScreen>
         });
       }
     }
+  }
+
+  // Rough fare estimate: Rs 50 base + Rs 5 per km of total route length.
+  // Replace with a real fare-rules table (zones, time-of-day, etc.) for prod.
+  double _estimateFare(List<LatLng> polyline) {
+    if (polyline.length < 2) return 50;
+    var totalM = 0.0;
+    for (var i = 1; i < polyline.length; i++) {
+      totalM += _haversineMeters(polyline[i - 1], polyline[i]);
+    }
+    final km = totalM / 1000;
+    return (50 + km * 5).clamp(50, 500).roundToDouble();
   }
 
   double _haversineMeters(LatLng a, LatLng b) {
@@ -898,6 +919,81 @@ class _LiveMapScreenState extends State<LiveMapScreen>
     // Pan the map so the user can see the bus + their stop together.
     if (polyline != null && _watchedBusPos != null) {
       _mapController.move(_watchedBusPos!, 14.0);
+    }
+
+    // Persist the trip in the backend. Creates an `ongoing` row in the
+    // `trips` table; the bus_id and route_id come from the real backend
+    // BusModel so this row joins back to a real bus + route.
+    _persistTripStart(bus);
+  }
+
+  Future<void> _persistTripStart(BusModel bus) async {
+    developer.log(
+      '[TripStart] called for bus=${bus.busNumber} '
+      'busId=${bus.busId} routeId=${bus.routeId}',
+      name: 'busgo.trip',
+    );
+
+    if (bus.busId == null || bus.routeId == null) {
+      developer.log(
+        '[TripStart] SKIPPED — bus.busId or bus.routeId is null. '
+        'This bus is missing UUIDs from the backend.',
+        name: 'busgo.trip',
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.warning,
+          duration: const Duration(seconds: 5),
+          content: Text(
+            'Cannot save trip: this bus has no UUID. '
+            '(busId=${bus.busId}, routeId=${bus.routeId})',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+      );
+      return;
+    }
+
+    final tripProvider = context.read<TripProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    developer.log('[TripStart] calling tripProvider.startTrip…',
+        name: 'busgo.trip');
+    final trip = await tripProvider.startTrip(
+      busId: bus.busId!,
+      routeId: bus.routeId!,
+    );
+
+    if (!mounted) return;
+
+    if (trip == null) {
+      final reason = tripProvider.errorMessage ?? 'Unknown error';
+      developer.log('[TripStart] FAILED — $reason', name: 'busgo.trip');
+      messenger.showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.danger,
+          duration: const Duration(seconds: 6),
+          content: Text(
+            'Could not save trip: $reason',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+      );
+    } else {
+      developer.log(
+        '[TripStart] SUCCESS — trip.id=${trip.id} status=${trip.tripStatus}',
+        name: 'busgo.trip',
+      );
+      messenger.showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.success,
+          duration: const Duration(seconds: 3),
+          content: Text(
+            'Trip saved (id ${trip.id?.substring(0, 8) ?? '?'}…)',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+      );
     }
   }
 
