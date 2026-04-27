@@ -29,7 +29,10 @@ Production-ready **Express.js** REST API for the BusGo Sri Lankan (Colombo) bus 
 ### 2. Clone & install
 
 ```bash
-cd "BusGo Back-end/busgo-backend"
+# from the repo root
+npm run install:backend
+# or directly:
+cd apps/backend/busgo-backend
 npm install
 ```
 
@@ -40,12 +43,15 @@ cp .env.example .env
 # Edit .env with your values (see table below)
 ```
 
+You only need to fill in the 3 Supabase values (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`). The JWT secrets in `.env.example` are pre-generated and safe for development; rotate them for production.
+
 ### 4. Set up Supabase database
 
 In your Supabase dashboard, go to **SQL Editor** and run the following files **in order**:
 
-1. `src/db/schema.sql` — creates all tables, enums, indexes, and RLS policies
-2. `src/db/seed.sql`   — seeds routes (138, 163, 171), stops, buses, and a demo user
+1. `src/db/full_setup.sql`         — base schema, admin schema, seed data (routes 138/163/171, stops, buses, demo user, admins)
+2. `src/db/driver_migration.sql`   — driver app: adds `password_hash` to drivers, `driver_id` to alerts, `accident` enum value
+3. `src/db/payments_migration.sql` — payments module additions
 
 ### 5. Create Supabase Storage bucket
 
@@ -56,7 +62,7 @@ In your Supabase dashboard → **Storage** → **New bucket**:
 ### 6. Run the server
 
 ```bash
-# Development (auto-reload)
+# Development (auto-reload via nodemon)
 npm run dev
 
 # Production
@@ -65,6 +71,40 @@ npm start
 
 Server starts at: `http://localhost:5000`
 Health check:     `http://localhost:5000/health`
+
+---
+
+## 🔑 Demo Credentials (after seed)
+
+The SQL seed scripts create these accounts so you can hit the API immediately.
+
+### Passenger (mobile app — `users` table)
+
+| Email | Password |
+|---|---|
+| `admin@gmail.com` | `12345678` |
+
+### Driver (driver app — `drivers` table)
+
+Drivers can log in with **email** OR **driver code**. Default password = the driver code itself, until they change it.
+
+| Email | Code | Password | Status |
+|---|---|---|---|
+| `kamal@busgo.lk` | `DRV-001` | `DRV-001` | active |
+| `saman@busgo.lk` | `DRV-002` | `DRV-002` | active |
+| `amara@busgo.lk` | `DRV-005` | `DRV-005` | active |
+| `nimal@busgo.lk` | `DRV-003` | `DRV-003` | inactive (login blocked) |
+| `ruwan@busgo.lk` | `DRV-004` | `DRV-004` | pending approval |
+
+### Admin (admin web dashboard — `admins` table)
+
+| Email | Password | Role |
+|---|---|---|
+| `admin@busgo.lk` | `Admin@2026` | super_admin |
+| `kasun@busgo.lk` | `Admin@2026` | admin |
+| `dilani@busgo.lk` | `Admin@2026` | admin |
+
+> ⚠️ **Change every password before going to production.**
 
 ---
 
