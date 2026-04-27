@@ -75,13 +75,16 @@ export async function getDriverRoute(driverId) {
  * Update bus location for the bus driven by this driver.
  */
 export async function updateDriverLocation(driverId, { latitude, longitude, speed, heading }) {
-  const { data: bus, error: busErr } = await supabase
+  // Use limit(1) — a driver may temporarily have >1 bus linked during reassignments;
+  // .maybeSingle() rejects with "multiple rows" in that case, which crashes the request.
+  const { data: buses, error: busErr } = await supabase
     .from('buses')
     .select('id')
     .eq('driver_id', driverId)
-    .maybeSingle();
+    .limit(1);
 
   if (busErr) throw busErr;
+  const bus = buses?.[0];
   if (!bus) {
     const err = new Error('No bus assigned to this driver');
     err.statusCode = 404;
@@ -116,12 +119,13 @@ export async function updatePassengerCount(driverId, { crowd_level }) {
     throw err;
   }
 
-  const { data: bus } = await supabase
+  const { data: buses } = await supabase
     .from('buses')
     .select('id')
     .eq('driver_id', driverId)
-    .maybeSingle();
+    .limit(1);
 
+  const bus = buses?.[0];
   if (!bus) {
     const err = new Error('No bus assigned to this driver');
     err.statusCode = 404;
@@ -150,12 +154,13 @@ export async function createDriverAlert(driverId, { alert_type, description, lat
     throw err;
   }
 
-  // Find the bus for this driver
-  const { data: bus } = await supabase
+  // Find the bus for this driver (limit(1) tolerates multi-bus assignments)
+  const { data: buses } = await supabase
     .from('buses')
     .select('id, bus_number')
     .eq('driver_id', driverId)
-    .maybeSingle();
+    .limit(1);
+  const bus = buses?.[0];
 
   // Try with driver_id first; if the column doesn't exist yet (migration pending) retry without it
   let insertPayload = {

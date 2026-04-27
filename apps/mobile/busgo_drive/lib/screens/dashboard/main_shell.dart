@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dashboard_screen.dart';
 import 'route_map_screen.dart';
 import '../emergency/emergency_screen.dart';
+import '../profile/profile_screen.dart';
 import 'my_rating_screen.dart';
 
 class MainShell extends StatefulWidget {
@@ -24,6 +25,7 @@ class MainShellState extends State<MainShell> {
     RouteMapScreen(),
     EmergencyScreen(),
     MyRatingScreen(),
+    ProfileScreen(),
   ];
 
   @override
@@ -54,6 +56,7 @@ class MainShellState extends State<MainShell> {
                 _buildNavItem(1, Icons.map_rounded, 'Map'),
                 _buildNavItem(2, Icons.notifications_active_rounded, 'Alerts'),
                 _buildNavItem(3, Icons.star_rounded, 'Rating'),
+                _buildNavItem(4, Icons.person_rounded, 'Profile'),
               ],
             ),
           ),
