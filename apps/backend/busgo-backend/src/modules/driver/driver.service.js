@@ -18,14 +18,15 @@ export async function getDriverMe(driverId) {
 
   if (error) throw error;
 
-  // Find assigned bus
-  const { data: bus } = await supabase
+  // Find assigned bus (limit(1) tolerates multi-bus assignments).
+  // crowd_level is needed by the driver app to seed its passenger gauge.
+  const { data: buses } = await supabase
     .from('buses')
-    .select('id, bus_number, registration, status, current_lat, current_lng')
+    .select('id, bus_number, registration, status, current_lat, current_lng, crowd_level')
     .eq('driver_id', driverId)
-    .maybeSingle();
+    .limit(1);
 
-  return { ...driver, bus: bus || null };
+  return { ...driver, bus: buses?.[0] || null };
 }
 
 /**

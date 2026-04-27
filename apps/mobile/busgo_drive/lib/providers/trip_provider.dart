@@ -122,6 +122,45 @@ class TripProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Manual +/- adjustment used by the dashboard quick-action buttons.
+  /// Pushes the new crowd level to the backend so the admin dashboard and
+  /// passenger app see the change immediately.
+  void adjustPassengers(int delta) {
+    if (_currentTrip == null) return;
+    final next = (_currentTrip!.currentPassengers + delta).clamp(0, 999);
+    if (next == _currentTrip!.currentPassengers) return;
+    _currentTrip = _currentTrip!.copyWith(
+      currentPassengers:  next,
+      passengersBoarded:  delta > 0
+          ? _currentTrip!.passengersBoarded + delta
+          : _currentTrip!.passengersBoarded,
+      passengersAlighted: delta < 0
+          ? _currentTrip!.passengersAlighted + (-delta)
+          : _currentTrip!.passengersAlighted,
+    );
+    _syncPassengers(next);
+    notifyListeners();
+  }
+
+  /// Seed the initial passenger count from the bus's saved crowd_level
+  /// in the backend. Called on dashboard load so the gauge isn't stuck at 0.
+  Future<void> seedPassengersFromBackend() async {
+    if (_currentTrip == null) return;
+    try {
+      final res = await _api.getMe();
+      final crowd = res.data?['data']?['bus']?['crowd_level'] as String?;
+      if (crowd == null) return;
+      final initial = switch (crowd) {
+        'full'   => 50,
+        'high'   => 35,
+        'medium' => 22,
+        _        => 8, // 'low' or anything unknown
+      };
+      _currentTrip = _currentTrip!.copyWith(currentPassengers: initial);
+      notifyListeners();
+    } catch (_) {/* ignore network hiccups */}
+  }
+
   void endTrip() {
     _gpsTimer?.cancel();
     _locationUpdateTimer?.cancel();
