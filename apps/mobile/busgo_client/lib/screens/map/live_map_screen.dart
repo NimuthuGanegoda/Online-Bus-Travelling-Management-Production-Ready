@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -34,6 +35,19 @@ class _LiveMapScreenState extends State<LiveMapScreen>
   // FR-20/21: arrival watch state for the bus the passenger has boarded.
   Timer? _arrivalSimTimer;
   String? _watchedBusId;
+
+  // The user's current map position. Starts hardcoded near Colombo Fort
+  // (no real geolocation yet — install `geolocator` for production).
+  // During an active trip the user "boards" the bus and this position
+  // tracks the bus marker for a clear visual journey.
+  LatLng _userPosition = const LatLng(6.9271, 79.8612);
+
+  // Trip lifecycle for the watched bus, drives the visual journey:
+  //   idle           → no active trip; buses bounce along their routes
+  //   awaitingPickup → watched bus is heading toward the user's stop
+  //   onTrip         → user has boarded, bus heads to destination
+  //   arrived        → reached destination; reset shortly after
+  _TripPhase _tripPhase = _TripPhase.idle;
 
   // Cached provider reference so dispose() can safely unsubscribe even
   // after the widget has been removed from the tree.
@@ -99,9 +113,18 @@ class _LiveMapScreenState extends State<LiveMapScreen>
     _startMovementSimulation();
   }
 
+  // Tracks the watched bus's explicit position during awaitingPickup/onTrip,
+  // so it can break out of its bouncy polyline animation and drive toward
+  // the user, then toward the route destination.
+  LatLng? _watchedBusPos;
+
   // Animate buses along their route polylines for visual "live" feel.
   // Real GPS broadcasts (via Supabase Realtime) take priority and will
   // overwrite these positions in BusProvider when they arrive.
+  //
+  // Special handling: while a trip is active, the watched bus is steered
+  // toward the user (awaitingPickup) and then toward the destination
+  // (onTrip), driving the FR-20 and FR-21 popups via real proximity checks.
   void _startMovementSimulation() {
     _movementTimer?.cancel();
     _movementTimer = Timer.periodic(const Duration(seconds: 2), (_) {
@@ -113,15 +136,22 @@ class _LiveMapScreenState extends State<LiveMapScreen>
           final id = bus.busId ?? bus.stopId;
           final polyline = _routePolylines[bus.routeNumber];
           if (polyline == null || polyline.length < 2) continue;
-          // Initialize on first tick: place at progress matching the bus's
-          // current GPS position (closest point on the polyline).
+
+          // Watched bus during an active trip — steer to a target.
+          if (id == _watchedBusId &&
+              _tripPhase != _TripPhase.idle &&
+              _tripPhase != _TripPhase.arrived) {
+            _stepWatchedBus(bus, polyline);
+            continue;
+          }
+
+          // Default bouncy progress along the polyline.
           if (!_simProgress.containsKey(id)) {
             _simProgress[id] = _initialProgressFor(bus, polyline);
             _simForward[id] = true;
           }
           var p = _simProgress[id]!;
           var fwd = _simForward[id] ?? true;
-          // Step ~1.5% of the route per tick (≈ 60s end-to-end).
           const step = 0.015;
           p = fwd ? p + step : p - step;
           if (p >= 1.0) {
@@ -136,6 +166,102 @@ class _LiveMapScreenState extends State<LiveMapScreen>
         }
       });
     });
+  }
+
+  // One simulation tick for the watched bus: it stays on its real route
+  // polyline (always forward) while the passenger waits at a stop ahead.
+  // FR-20 fires when the bus reaches the passenger's stop; FR-21 fires
+  // when the bus reaches its route destination.
+  void _stepWatchedBus(BusModel bus, List<LatLng> polyline) {
+    final id = bus.busId ?? bus.stopId;
+
+    // Always advance the bus forward along its route during a trip.
+    var p = _simProgress[id] ?? _initialProgressFor(bus, polyline);
+    p = (p + 0.020).clamp(0.0, 1.0);
+    _simProgress[id] = p;
+    _simForward[id] = true;
+    _watchedBusPos = _interpolateAlong(polyline, p);
+
+    final messenger = ScaffoldMessenger.of(context);
+
+    if (_tripPhase == _TripPhase.awaitingPickup) {
+      // Passenger is waiting at a stop on the route — fire FR-20 when
+      // the bus reaches them.
+      if (_haversineMeters(_watchedBusPos!, _userPosition) < 250) {
+        messenger.showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.secondary,
+            duration: const Duration(seconds: 4),
+            content: Row(
+              children: [
+                const Icon(Icons.directions_bus,
+                    color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Bus ${bus.routeNumber} has arrived at your stop. '
+                    'Boarding now...',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+        _userPosition = _watchedBusPos!;
+        _tripPhase = _TripPhase.onTrip;
+      } else if (p >= 1.0) {
+        // Reached the end of the route without picking up — loop back so
+        // the demo always reaches the pickup eventually.
+        _simProgress[id] = 0.0;
+      }
+    } else if (_tripPhase == _TripPhase.onTrip) {
+      // User travels with the bus along the route.
+      _userPosition = _watchedBusPos!;
+      if (p >= 0.99) {
+        messenger.showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.success,
+            duration: const Duration(seconds: 5),
+            content: Row(
+              children: [
+                const Icon(Icons.flag, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'You have arrived at ${bus.to}. Please rate your trip!',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+        _tripPhase = _TripPhase.arrived;
+        _arrivalSimTimer?.cancel();
+        _arrivalSimTimer = Timer(const Duration(seconds: 5), () {
+          if (!mounted) return;
+          setState(() {
+            _watchedBusId = null;
+            _watchedBusPos = null;
+            _tripPhase = _TripPhase.idle;
+          });
+        });
+      }
+    }
+  }
+
+  double _haversineMeters(LatLng a, LatLng b) {
+    const earthM = 6371000.0;
+    double rad(double deg) => deg * math.pi / 180;
+    final dLat = rad(b.latitude - a.latitude);
+    final dLng = rad(b.longitude - a.longitude);
+    final h = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(rad(a.latitude)) *
+            math.cos(rad(b.latitude)) *
+            math.sin(dLng / 2) *
+            math.sin(dLng / 2);
+    return 2 * earthM * math.asin(math.sqrt(h));
   }
 
   // Linearly interpolate a point along a polyline given a 0–1 progress value.
@@ -181,6 +307,32 @@ class _LiveMapScreenState extends State<LiveMapScreen>
     super.dispose();
   }
 
+  Color _tripPhaseColor() {
+    switch (_tripPhase) {
+      case _TripPhase.awaitingPickup:
+        return AppColors.warning;
+      case _TripPhase.onTrip:
+        return AppColors.secondary;
+      case _TripPhase.arrived:
+        return AppColors.success;
+      case _TripPhase.idle:
+        return AppColors.success;
+    }
+  }
+
+  String _tripPhaseLabel(int busCount) {
+    switch (_tripPhase) {
+      case _TripPhase.awaitingPickup:
+        return 'BUS COMING TO YOU';
+      case _TripPhase.onTrip:
+        return 'ON TRIP';
+      case _TripPhase.arrived:
+        return 'ARRIVED';
+      case _TripPhase.idle:
+        return 'LIVE · $busCount BUSES';
+    }
+  }
+
   Color _routeColorFor(BusModel bus) {
     if (_fallbackRouteColors.containsKey(bus.routeNumber)) {
       return _fallbackRouteColors[bus.routeNumber]!;
@@ -192,14 +344,19 @@ class _LiveMapScreenState extends State<LiveMapScreen>
     final id = bus.busId ?? bus.stopId;
     final polyline = _routePolylines[bus.routeNumber];
 
-    // Prefer the simulated walk-along position once it's been initialized.
+    // Watched bus during a trip: use the explicit steered position.
+    if (id == _watchedBusId &&
+        _tripPhase != _TripPhase.idle &&
+        _watchedBusPos != null) {
+      return _watchedBusPos;
+    }
+    // Otherwise prefer the simulated walk-along position once initialized.
     if (polyline != null && polyline.length >= 2 && _simProgress.containsKey(id)) {
       return _interpolateAlong(polyline, _simProgress[id]!);
     }
     if (bus.currentLat != null && bus.currentLng != null) {
       return LatLng(bus.currentLat!, bus.currentLng!);
     }
-    // Fallback: place at the start of its route polyline if known.
     if (polyline != null && polyline.isNotEmpty) return polyline.first;
     return null;
   }
@@ -299,7 +456,7 @@ class _LiveMapScreenState extends State<LiveMapScreen>
                         MarkerLayer(
                           markers: [
                             Marker(
-                              point: _userLocation,
+                              point: _userPosition,
                               width: 30,
                               height: 30,
                               child: AnimatedBuilder(
@@ -530,7 +687,7 @@ class _LiveMapScreenState extends State<LiveMapScreen>
                       right: 12,
                       child: GestureDetector(
                         onTap: () =>
-                            _mapController.move(_userLocation, 13.0),
+                            _mapController.move(_userPosition, 13.0),
                         child: Container(
                           width: 44,
                           height: 44,
@@ -552,7 +709,7 @@ class _LiveMapScreenState extends State<LiveMapScreen>
                       ),
                     ),
 
-                    // ── Live indicator ──
+                    // ── Live + trip-phase indicator ──
                     Positioned(
                       bottom: 60,
                       left: 12,
@@ -560,7 +717,7 @@ class _LiveMapScreenState extends State<LiveMapScreen>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppColors.success,
+                          color: _tripPhaseColor(),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
@@ -570,7 +727,7 @@ class _LiveMapScreenState extends State<LiveMapScreen>
                                 size: 6, color: Colors.white),
                             const SizedBox(width: 4),
                             Text(
-                              'LIVE · ${buses.length} BUSES',
+                              _tripPhaseLabel(buses.length),
                               style: const TextStyle(
                                 fontSize: 9,
                                 fontWeight: FontWeight.w700,
@@ -708,69 +865,40 @@ class _LiveMapScreenState extends State<LiveMapScreen>
   }
 
   // ─────────────────────────────────────────────────────────────────
-  // FR-20 / FR-21: arrival notifications.
+  // FR-20 / FR-21: arrival notifications driven by the trip lifecycle.
   // In production these fire from real GPS broadcasts via Supabase
-  // Realtime when the bus comes within 150m of the boarding/destination
-  // stop (proximity check is done in BusProvider._applyLocationUpdate).
-  // For demo without a driver app pushing GPS, this also schedules
-  // simulated notifications so the flow is observable end-to-end.
+  // Realtime when the bus comes within 250m of the boarding/destination
+  // stop. For demo without a driver app pushing GPS, the movement
+  // simulation steers the watched bus through the same proximity logic.
   // ─────────────────────────────────────────────────────────────────
   void _startArrivalWatch(BusModel bus) {
     _arrivalSimTimer?.cancel();
-    _watchedBusId = bus.busId ?? bus.stopId;
+    final id = bus.busId ?? bus.stopId;
+    final polyline = _routePolylines[bus.routeNumber];
 
-    final messenger = ScaffoldMessenger.of(context);
+    // Place the passenger at a stop further ahead on the bus's route
+    // so the bus actually drives along its real route to reach them.
+    LatLng pickupStop = _userPosition;
+    if (polyline != null && polyline.length >= 2) {
+      final busProgress =
+          _simProgress[id] ?? _initialProgressFor(bus, polyline);
+      final stopProgress = (busProgress + 0.30).clamp(0.05, 0.90);
+      pickupStop = _interpolateAlong(polyline, stopProgress);
+    }
 
-    // FR-20: arrival at the boarding stop (~8s into the simulated trip).
-    _arrivalSimTimer = Timer(const Duration(seconds: 8), () {
-      if (!mounted || _watchedBusId != (bus.busId ?? bus.stopId)) return;
-      messenger.showSnackBar(
-        SnackBar(
-          backgroundColor: AppColors.secondary,
-          duration: const Duration(seconds: 4),
-          content: Row(
-            children: [
-              const Icon(Icons.directions_bus,
-                  color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Bus ${bus.routeNumber} is arriving at your stop '
-                  '(${bus.from})',
-                  style:
-                      const TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-
-      // FR-21: arrival at the destination (~20s after the boarding alert).
-      _arrivalSimTimer = Timer(const Duration(seconds: 20), () {
-        if (!mounted || _watchedBusId != (bus.busId ?? bus.stopId)) return;
-        messenger.showSnackBar(
-          SnackBar(
-            backgroundColor: AppColors.success,
-            duration: const Duration(seconds: 5),
-            content: Row(
-              children: [
-                const Icon(Icons.flag,
-                    color: Colors.white, size: 20),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'You have arrived at ${bus.to}. Please rate your trip!',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-        _watchedBusId = null;
-      });
+    setState(() {
+      _watchedBusId = id;
+      _watchedBusPos = bus.currentLat != null && bus.currentLng != null
+          ? LatLng(bus.currentLat!, bus.currentLng!)
+          : (polyline?.first);
+      _userPosition = pickupStop; // user "walks" to the stop on the route
+      _tripPhase = _TripPhase.awaitingPickup;
+      _simForward[id] = true; // ensure bus moves forward along the route
     });
+    // Pan the map so the user can see the bus + their stop together.
+    if (polyline != null && _watchedBusPos != null) {
+      _mapController.move(_watchedBusPos!, 14.0);
+    }
   }
 
   Widget _zoomButton(IconData icon, VoidCallback onTap) {
@@ -1048,3 +1176,10 @@ class _StopMarker extends StatelessWidget {
     );
   }
 }
+
+
+// ═══════════════════════════════════════════════════════════
+// TRIP PHASE — drives the visual journey after passenger boards
+// ═══════════════════════════════════════════════════════════
+enum _TripPhase { idle, awaitingPickup, onTrip, arrived }
+
