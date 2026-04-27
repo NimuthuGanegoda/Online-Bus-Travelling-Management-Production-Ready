@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Download, Calendar } from 'lucide-react';
 import { fetchAuditLogs } from '../services/audit.service';
+import { exportToCSV } from '../services/csvExport';
 import type { AuditLog } from '../types';
 import './AuditLogs.css';
 
@@ -48,6 +49,48 @@ export default function AuditLogs() {
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
+  const [exporting, setExporting] = useState(false);
+
+  // Fetch all matching logs (respecting filters + date range) and export to CSV.
+  // Date filtering is applied client-side since the backend service only filters
+  // by action/admin_email/entity/search.
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const result = await fetchAuditLogs({
+        action:      actionFilter !== 'all' ? actionFilter : undefined,
+        admin_email: adminFilter  !== 'all' ? adminFilter  : undefined,
+        page:        1,
+        page_size:   10000, // grab everything matching the filters
+      });
+
+      let rows = result.data;
+      if (fromDate) {
+        const from = new Date(fromDate).getTime();
+        rows = rows.filter((l) => new Date(l.timestamp).getTime() >= from);
+      }
+      if (toDate) {
+        const to = new Date(toDate).getTime() + 86_400_000; // include end day
+        rows = rows.filter((l) => new Date(l.timestamp).getTime() < to);
+      }
+
+      exportToCSV('busgo_audit_logs', rows, [
+        ['Timestamp', 'timestamp'],
+        ['Admin', 'admin'],
+        ['Action', 'action'],
+        ['Entity', 'entity'],
+        ['Entity ID', 'entityId'],
+        ['Details', 'details'],
+        ['IP Address', 'ipAddress'],
+      ]);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to export audit logs. Check your network.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="audit-page">
       <div className="audit-header">
@@ -80,8 +123,8 @@ export default function AuditLogs() {
             <option value="DEPLOY">Deploy</option>
             <option value="SUSPEND">Suspend</option>
           </select>
-          <button className="audit-export-btn">
-            <Download size={16} /> Export CSV
+          <button className="audit-export-btn" onClick={handleExport} disabled={exporting}>
+            <Download size={16} /> {exporting ? 'Exporting…' : 'Export CSV'}
           </button>
         </div>
       </div>

@@ -7,6 +7,7 @@ import { fetchDrivers, approveDriver, rejectDriver, setDriverStatus, deleteDrive
 import { fetchPassengers, suspendPassenger, activatePassenger, deletePassenger, createPassenger } from '../services/passengers.service';
 import { fetchAdmins, toggleAdminStatus, deleteAdmin, createAdmin, updateAdmin } from '../services/admins.service';
 import { fetchAdminRoutes, type Route } from '../services/routes.service';
+import { exportToCSV } from '../services/csvExport';
 import type { Driver, Passenger, Admin } from '../types';
 import './UserManagement.css';
 
@@ -568,7 +569,44 @@ export default function UserManagement() {
               <Plus size={16} /> Add Passenger
             </button>
           )}
-          <button className="users-btn outline">
+          <button
+            className="users-btn outline"
+            onClick={() => {
+              if (activeTab === 'drivers') {
+                exportToCSV('busgo_drivers', filteredDrivers, [
+                  ['Driver ID', 'id'],
+                  ['Name', 'name'],
+                  ['Email', 'email'],
+                  ['Phone', 'phone'],
+                  ['Route', (d) => (d.route ? `Route ${d.route}` : 'Unassigned')],
+                  ['Rating', (d) => d.rating.toFixed(1)],
+                  ['Status', 'status'],
+                ]);
+              } else if (activeTab === 'passengers') {
+                exportToCSV('busgo_passengers', filteredPassengers, [
+                  ['Passenger ID', 'id'],
+                  ['Name', 'name'],
+                  ['Email', 'email'],
+                  ['Phone', 'phone'],
+                  ['NIC', 'nic'],
+                  ['Status', 'status'],
+                  ['Trips Today', 'tripsToday'],
+                  ['Total Trips', 'totalTrips'],
+                  ['Registered', 'registeredDate'],
+                ]);
+              } else {
+                exportToCSV('busgo_admins', filteredAdmins, [
+                  ['Admin ID', 'id'],
+                  ['Name', 'name'],
+                  ['Email', 'email'],
+                  ['Phone', 'phone'],
+                  ['Role', 'role'],
+                  ['Status', 'status'],
+                  ['Last Login', 'lastLogin'],
+                ]);
+              }
+            }}
+          >
             <Download size={16} /> Export
           </button>
         </div>
