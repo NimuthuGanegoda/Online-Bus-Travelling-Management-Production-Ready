@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:go_router/go_router.dart' hide RouteData;
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
@@ -241,11 +242,9 @@ class _LiveMapScreenState extends State<LiveMapScreen>
         );
         _tripPhase = _TripPhase.arrived;
 
-        // Mark the trip as completed in the backend with a fare estimate.
-        // PATCH /api/trips/:id/alight — moves status to 'completed' and the
-        // row will appear in Ride History on next refresh.
+        // Mark the trip as completed in the backend and navigate to rating.
         final fare = _estimateFare(polyline);
-        context.read<TripProvider>().alightTrip(fareLkr: fare);
+        _completeTripAndRate(fare, bus);
 
         _arrivalSimTimer?.cancel();
         _arrivalSimTimer = Timer(const Duration(seconds: 5), () {
@@ -258,6 +257,35 @@ class _LiveMapScreenState extends State<LiveMapScreen>
         });
       }
     }
+  }
+
+  // Auto-arrival flow: bus reached destination on the map. We do NOT alight
+  // the trip here — instead we navigate the user to the QR card so they can
+  // tap "Scan to Exit Bus" themselves (matches the real-world scanner flow).
+  // The QR screen will end the trip and continue to the rating page.
+  void _completeTripAndRate(double fare, BusModel bus) {
+    final messenger = ScaffoldMessenger.of(context);
+    final router = GoRouter.of(context);
+
+    developer.log(
+      '[TripEnd] auto-arrival → navigating to QR exit screen, fare=$fare',
+      name: 'busgo.trip',
+    );
+
+    messenger.showSnackBar(
+      SnackBar(
+        backgroundColor: AppColors.secondary,
+        duration: const Duration(seconds: 4),
+        content: Text(
+          'Bus arrived at ${bus.to}. Scan your QR to exit and rate the driver.',
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+      ),
+    );
+
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (mounted) router.push('/qr');
+    });
   }
 
   // Rough fare estimate: Rs 50 base + Rs 5 per km of total route length.

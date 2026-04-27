@@ -268,10 +268,10 @@ class _QrCardScreenState extends State<QrCardScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Scan to Exit — completes the current ongoing trip via the
-                  // backend (PATCH /api/trips/:id/alight) and navigates to the
-                  // rating screen. If there's no ongoing trip, it just opens
-                  // the rating screen without an API call.
+                  // Scan to Exit — completes the current ongoing trip via
+                  // PATCH /api/trips/:id/alight. If the local provider state
+                  // is stale, we refresh from the backend first so a freshly
+                  // boarded trip is always picked up.
                   SizedBox(
                     width: double.infinity,
                     height: 48,
@@ -281,31 +281,70 @@ class _QrCardScreenState extends State<QrCardScreen> {
                         final messenger = ScaffoldMessenger.of(context);
                         final router = GoRouter.of(context);
 
-                        if (tripProvider.ongoingTrip != null) {
-                          final completed = await tripProvider.alightTrip(
-                            fareLkr: 70, // demo fare; replace with real fare logic later
-                          );
-                          if (completed != null) {
-                            messenger.showSnackBar(
-                              SnackBar(
-                                backgroundColor: AppColors.success,
-                                content: Text(
-                                  'Trip completed — fare Rs ${completed.fare.toStringAsFixed(0)}',
-                                  style: const TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                            );
-                          }
-                        } else {
+                        // Refresh from backend if no ongoing trip locally —
+                        // handles the case where the user navigated here right
+                        // after boarding, before the provider state updated.
+                        if (tripProvider.ongoingTrip == null) {
+                          await tripProvider.loadTripHistory();
+                        }
+
+                        if (tripProvider.ongoingTrip == null) {
                           messenger.showSnackBar(
                             const SnackBar(
+                              backgroundColor: Colors.orange,
+                              duration: Duration(seconds: 4),
                               content: Text(
-                                'No active trip to exit. Board a bus from the map first.',
+                                'No active trip to exit. Board a bus from the '
+                                'map first.',
                               ),
                             ),
                           );
+                          return;
                         }
-                        router.push('/rating');
+
+                        final completed = await tripProvider.alightTrip(
+                          fareLkr: 70, // demo flat fare
+                        );
+
+                        if (completed == null) {
+                          final reason = tripProvider.errorMessage
+                              ?? 'Could not end trip';
+                          messenger.showSnackBar(
+                            SnackBar(
+                              backgroundColor: AppColors.danger,
+                              duration: const Duration(seconds: 5),
+                              content: Text(
+                                'Failed to exit: $reason',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+
+                        messenger.showSnackBar(
+                          SnackBar(
+                            backgroundColor: AppColors.success,
+                            duration: const Duration(seconds: 3),
+                            content: Text(
+                              'Trip completed — fare '
+                              'Rs ${completed.fare.toStringAsFixed(0)}',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        );
+
+                        // Small delay so the success snackbar is visible
+                        // before navigation.
+                        await Future.delayed(
+                            const Duration(milliseconds: 600));
+                        if (router.canPop() ||
+                            // ignore: use_build_context_synchronously
+                            ModalRoute.of(context) != null) {
+                          router.push('/rating');
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1E5AA8),
