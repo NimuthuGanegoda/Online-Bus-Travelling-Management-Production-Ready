@@ -19,8 +19,8 @@ class AppConfig {
   // ── Supabase credentials (used for Realtime subscriptions only) ───────────
   // Replace these with your actual Supabase project values.
   // These are the ANON (public) keys — safe to include in client code.
-  static const String supabaseUrl = 'https://YOUR_PROJECT_ID.supabase.co';
-  static const String supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
+  static const String supabaseUrl = 'https://rxcvfsicxltsmmlakgws.supabase.co';
+  static const String supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4Y3Zmc2ljeGx0c21tbGFrZ3dzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMTYzOTgsImV4cCI6MjA5Mjc5MjM5OH0.RT59aWqE7cGg-5QxzrpdjgvYQ1MjWQNEoxfDMUDJOXI';
 
   // ── Realtime channel for live bus tracking ────────────────────────────────
   static const String busLocationChannel = 'bus-locations';

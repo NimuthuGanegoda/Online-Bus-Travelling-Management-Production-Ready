@@ -32,10 +32,40 @@ export async function getAllBuses({ status, routeId, search }) {
   return result;
 }
 
+/**
+ * Pick a sensible initial GPS position for a newly registered bus.
+ * Prefers the route's first waypoint; falls back to Colombo Fort
+ * with a small random offset so multiple new buses don't stack.
+ * Without this, /api/buses/nearby would hide the bus from the
+ * mobile map until a driver app starts broadcasting real GPS.
+ */
+async function _initialPositionForRoute(routeId) {
+  const { data: route } = await supabase
+    .from('bus_routes')
+    .select('waypoints')
+    .eq('id', routeId)
+    .maybeSingle();
+
+  const wps = route?.waypoints;
+  if (Array.isArray(wps) && wps.length > 0) {
+    const wp = wps[0];
+    const lat = typeof wp?.lat === 'number' ? wp.lat : null;
+    const lng = typeof wp?.lng === 'number' ? wp.lng : null;
+    if (lat !== null && lng !== null) return { lat, lng };
+  }
+  // Colombo Fort area fallback with ±0.005° (~550m) jitter.
+  return {
+    lat: 6.9271 + (Math.random() - 0.5) * 0.01,
+    lng: 79.8612 + (Math.random() - 0.5) * 0.01,
+  };
+}
+
 export async function registerBus({ busNumber, routeId, registration, driverName, driverPhone }, admin) {
   if (!busNumber || !routeId || !driverName) {
     throw Object.assign(new Error('bus_number, route_id and driver_name are required'), { statusCode: 400 });
   }
+
+  const initialPos = await _initialPositionForRoute(routeId);
 
   const { data, error } = await supabase
     .from('buses')
@@ -47,6 +77,10 @@ export async function registerBus({ busNumber, routeId, registration, driverName
       driver_phone: driverPhone?.trim() || null,
       status:       'standby',
       crowd_level:  'low',
+      current_lat:  initialPos.lat,
+      current_lng:  initialPos.lng,
+      heading:      0,
+      speed_kmh:    0,
     })
     .select(BUS_SELECT)
     .single();

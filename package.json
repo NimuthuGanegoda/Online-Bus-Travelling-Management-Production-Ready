@@ -1,4 +1,26 @@
 {
+  "name": "busgo-monorepo",
+  "private": true,
+  "scripts": {
+    "install:backend":  "npm --prefix apps/backend/busgo-backend install",
+    "install:frontend": "npm --prefix apps/frontend/busgo_admin install",
+    "install:mobile":   "cd apps/mobile/busgo_client && flutter pub get",
+    "install:driver":   "cd apps/mobile/busgo_drive && flutter pub get",
+    "install:scanner":  "cd apps/mobile/busgo_scanner && flutter pub get",
+    "install:all":      "npm run install:backend && npm run install:frontend && npm run install:mobile && npm run install:driver && npm run install:scanner",
+
+    "dev:backend":  "npm --prefix apps/backend/busgo-backend run dev",
+    "dev:frontend": "npm --prefix apps/frontend/busgo_admin run dev",
+    "dev:mobile":   "cd apps/mobile/busgo_client && flutter run -d chrome",
+    "dev:driver":   "cd apps/mobile/busgo_drive && flutter run -d chrome",
+    "dev:scanner":  "cd apps/mobile/busgo_scanner && flutter run -d chrome",
+
+    "start:backend":  "npm --prefix apps/backend/busgo-backend start",
+    "build:frontend": "npm --prefix apps/frontend/busgo_admin run build",
+
+    "lint:backend":  "npm --prefix apps/backend/busgo-backend run lint",
+    "lint:frontend": "npm --prefix apps/frontend/busgo_admin run lint"
+  },
   "devDependencies": {
     "docx": "^9.6.1"
   }

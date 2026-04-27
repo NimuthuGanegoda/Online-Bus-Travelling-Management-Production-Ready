@@ -110,128 +110,201 @@ class _DriverRatingScreenState extends State<DriverRatingScreen> {
     );
   }
 
+  /// Most recent trip the user just completed (or is on). Falls back gracefully
+  /// when nothing's available yet — keeps the screen functional in any state.
+  ({
+    String routeNumber,
+    String routeText,
+    String fareText,
+    String dateText,
+    String driverName,
+    String driverInitials,
+    String driverIdText,
+  }) _resolveTripInfo(TripProvider tp) {
+    final trip = tp.tripHistory.isNotEmpty
+        ? tp.tripHistory.first
+        : tp.ongoingTrip;
+
+    if (trip == null) {
+      return (
+        routeNumber: '—',
+        routeText: 'No recent trip',
+        fareText: '',
+        dateText: '',
+        driverName: 'Driver',
+        driverInitials: '?',
+        driverIdText: '',
+      );
+    }
+
+    final initials = trip.driverName
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((p) => p.isNotEmpty)
+        .map((p) => p[0])
+        .take(2)
+        .join()
+        .toUpperCase();
+
+    return (
+      routeNumber: trip.routeNumber,
+      routeText: trip.from.isNotEmpty && trip.to.isNotEmpty
+          ? '${trip.from} → ${trip.to}'
+          : 'Route ${trip.routeNumber}',
+      fareText: trip.fare > 0 ? 'Rs ${trip.fare.toStringAsFixed(0)}' : '—',
+      dateText: trip.dateTime,
+      driverName: trip.driverName,
+      driverInitials: initials.isNotEmpty ? initials : '?',
+      driverIdText: trip.driverId,
+    );
+  }
+
   Widget _buildTripSummary() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF1E5AA8).withValues(alpha: 0.1)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF132F54), Color(0xFF1E5AA8)],
-                  ),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  '138',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Text(
-                  'Nugegoda → Colombo',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.primary),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E5AA8).withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Text(
-                  'Rs.60',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF132F54),
-                  ),
-                ),
+    return Consumer<TripProvider>(
+      builder: (context, tp, _) {
+        final info = _resolveTripInfo(tp);
+        return Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFF1E5AA8).withValues(alpha: 0.1)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Row(
+          child: Column(
             children: [
-              Icon(Icons.calendar_today_rounded, size: 12, color: AppColors.textMuted.withValues(alpha: 0.6)),
-              const SizedBox(width: 6),
-              const Text(
-                '18 Mar 2026 · 09:15',
-                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF132F54), Color(0xFF1E5AA8)],
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      info.routeNumber,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      info.routeText,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.primary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (info.fareText.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E5AA8).withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        info.fareText,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF132F54),
+                        ),
+                      ),
+                    ),
+                ],
               ),
+              if (info.dateText.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.calendar_today_rounded,
+                        size: 12,
+                        color: AppColors.textMuted.withValues(alpha: 0.6)),
+                    const SizedBox(width: 6),
+                    Text(
+                      info.dateText,
+                      style: const TextStyle(
+                          fontSize: 11, color: AppColors.textMuted),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildDriverInfo() {
-    return Column(
-      children: [
-        Container(
-          width: 72,
-          height: 72,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF132F54), Color(0xFF1E5AA8)],
+    return Consumer<TripProvider>(
+      builder: (context, tp, _) {
+        final info = _resolveTripInfo(tp);
+        return Column(
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF132F54), Color(0xFF1E5AA8)],
+                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF1E5AA8).withValues(alpha: 0.3),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                info.driverInitials,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF1E5AA8).withValues(alpha: 0.3),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
+            const SizedBox(height: 10),
+            Text(
+              info.driverName,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
+              ),
+            ),
+            if (info.driverIdText.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(
+                'Driver ID: ${info.driverIdText}',
+                style: const TextStyle(
+                    fontSize: 11, color: AppColors.textMuted),
               ),
             ],
-          ),
-          alignment: Alignment.center,
-          child: const Text(
-            'NF',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 26,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        const Text(
-          'Namal Fernando',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: AppColors.primary,
-          ),
-        ),
-        const SizedBox(height: 2),
-        const Text(
-          'Driver ID: DRV-2841',
-          style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
+import '../../models/trip_model.dart';
+import '../../providers/trip_provider.dart';
 
 const _blue = Color(0xFF1976D2);
 const _navy = Color(0xFF0A2342);
@@ -16,57 +19,13 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
 
-  static const _rides = [
-    {
-      'bus': 'Bus 138',
-      'route': 'Nugegoda → Petta',
-      'date': 'Today · 09:15 · 20 mins',
-      'price': 'Rs 70',
-      'rating': 4,
-      'maxRating': 5,
-    },
-    {
-      'bus': 'Bus 240',
-      'route': 'Negombo → Colombo',
-      'date': 'Yesterday · 14:32 · 1 hr 30 mins',
-      'price': 'Rs 250',
-      'rating': 3,
-      'maxRating': 5,
-    },
-    {
-      'bus': 'Bus 144',
-      'route': 'Rajagiriya → Kollupitiya',
-      'date': 'Mon 17 Mar · 08:50 · 20 mins',
-      'price': 'Rs 50',
-      'rating': 4,
-      'maxRating': 5,
-    },
-    {
-      'bus': 'Bus 100',
-      'route': 'Colombo → Moratuwa',
-      'date': 'Sun 16 Mar · 18:04 · 30 mins',
-      'price': 'Rs 150',
-      'rating': 4,
-      'maxRating': 5,
-    },
-    {
-      'bus': 'Bus 01',
-      'route': 'Kandy → Colombo',
-      'date': 'Sat 15 Mar · 11:20 · 4 hrs',
-      'price': 'Rs 800',
-      'rating': 3,
-      'maxRating': 5,
-    },
-  ];
-
-  List<Map<String, dynamic>> get _filtered {
-    if (_searchQuery.isEmpty) return List<Map<String, dynamic>>.from(_rides);
-    final q = _searchQuery.toLowerCase();
-    return _rides
-        .where((r) =>
-            (r['bus'] as String).toLowerCase().contains(q) ||
-            (r['route'] as String).toLowerCase().contains(q))
-        .toList();
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<TripProvider>().loadTripHistory();
+    });
   }
 
   @override
@@ -75,38 +34,91 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
     super.dispose();
   }
 
+  List<TripModel> _filterTrips(List<TripModel> trips) {
+    if (_searchQuery.isEmpty) return trips;
+    final q = _searchQuery.toLowerCase();
+    return trips
+        .where((t) =>
+            'bus ${t.routeNumber}'.toLowerCase().contains(q) ||
+            t.displayRoute.toLowerCase().contains(q))
+        .toList();
+  }
+
   Future<void> _onRefresh() async {
-    await Future.delayed(const Duration(seconds: 2));
-    setState(() {});
+    await context.read<TripProvider>().loadTripHistory();
   }
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _filtered;
+    return Consumer<TripProvider>(
+      builder: (context, tripProvider, _) {
+        final filtered = _filterTrips(tripProvider.tripHistory);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFEEF2F8),
-      body: Column(
-        children: [
-          _buildBlueHeader(),
-          _buildStatsRow(),
-          Expanded(
-            child: filtered.isEmpty
-                ? _buildEmptyState()
-                : RefreshIndicator(
-                    color: _blue,
-                    onRefresh: _onRefresh,
-                    child: ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: filtered.length + 1,
-                      itemBuilder: (context, index) {
-                        if (index == 0) return _buildMonthHeader();
-                        return _buildRideCard(filtered[index - 1]);
-                      },
-                    ),
-                  ),
+        return Scaffold(
+          backgroundColor: const Color(0xFFEEF2F8),
+          body: Column(
+            children: [
+              _buildBlueHeader(),
+              _buildStatsRow(tripProvider),
+              Expanded(
+                child: tripProvider.isLoading && tripProvider.tripHistory.isEmpty
+                    ? const Center(
+                        child: CircularProgressIndicator(color: _blue),
+                      )
+                    : tripProvider.errorMessage != null &&
+                            tripProvider.tripHistory.isEmpty
+                        ? _buildErrorState(tripProvider.errorMessage!)
+                        : filtered.isEmpty
+                            ? _buildEmptyState()
+                            : RefreshIndicator(
+                                color: _blue,
+                                onRefresh: _onRefresh,
+                                child: ListView.builder(
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 16),
+                                  itemCount: filtered.length + 1,
+                                  itemBuilder: (context, index) {
+                                    if (index == 0) {
+                                      return _buildMonthHeader(filtered.length);
+                                    }
+                                    return _buildRideCard(filtered[index - 1]);
+                                  },
+                                ),
+                              ),
+              ),
+            ],
           ),
-        ],
+        );
+      },
+    );
+  }
+
+  Widget _buildErrorState(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_rounded, size: 40, color: AppColors.danger),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: _onRefresh,
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _blue,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -224,7 +236,13 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
     );
   }
 
-  Widget _buildStatsRow() {
+  Widget _buildStatsRow(TripProvider tripProvider) {
+    final trips = tripProvider.totalTrips.toString();
+    final spent = 'Rs ${tripProvider.totalSpent.toStringAsFixed(0)}';
+    final rating = tripProvider.totalTrips == 0
+        ? '—'
+        : tripProvider.averageRating.toStringAsFixed(1);
+
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 14, 16, 4),
       padding: const EdgeInsets.all(14),
@@ -242,11 +260,11 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
       ),
       child: Row(
         children: [
-          _statBox('24', 'Trips', _blue, Icons.directions_bus_rounded),
+          _statBox(trips, 'Trips', _blue, Icons.directions_bus_rounded),
           _statDivider(),
-          _statBox('Rs 1,320', 'Spent', const Color(0xFF0E7C61), Icons.account_balance_wallet_rounded),
+          _statBox(spent, 'Spent', const Color(0xFF0E7C61), Icons.account_balance_wallet_rounded),
           _statDivider(),
-          _statBox('3.6', 'Rating', AppColors.starFilled, Icons.star_rounded),
+          _statBox(rating, 'Rating', AppColors.starFilled, Icons.star_rounded),
         ],
       ),
     );
@@ -287,7 +305,14 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
     );
   }
 
-  Widget _buildMonthHeader() {
+  Widget _buildMonthHeader(int tripCount) {
+    final now = DateTime.now();
+    const months = [
+      'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
+      'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC',
+    ];
+    final label = '${months[now.month - 1]} ${now.year}';
+
     return Padding(
       padding: const EdgeInsets.only(top: 14, bottom: 8),
       child: Row(
@@ -303,16 +328,16 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
               children: [
                 Icon(Icons.calendar_month_rounded, size: 12, color: _blue.withValues(alpha: 0.7)),
                 const SizedBox(width: 4),
-                const Text(
-                  'MARCH 2026',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _blue, letterSpacing: 0.5),
+                Text(
+                  label,
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _blue, letterSpacing: 0.5),
                 ),
               ],
             ),
           ),
           const Spacer(),
           Text(
-            '${_filtered.length} trips',
+            '$tripCount ${tripCount == 1 ? 'trip' : 'trips'}',
             style: TextStyle(fontSize: 11, color: _blue.withValues(alpha: 0.4)),
           ),
         ],
@@ -320,9 +345,17 @@ class _RideHistoryScreenState extends State<RideHistoryScreen> {
     );
   }
 
-  Widget _buildRideCard(Map<String, dynamic> ride) {
-    final int rating = ride['rating'] as int;
-    final int maxRating = ride['maxRating'] as int;
+  Widget _buildRideCard(TripModel trip) {
+    final int rating = trip.rating.clamp(0, 5);
+    const int maxRating = 5;
+    final ride = {
+      'bus': 'Bus ${trip.routeNumber}',
+      'route': trip.from.isNotEmpty && trip.to.isNotEmpty
+          ? '${trip.from} → ${trip.to}'
+          : 'Route ${trip.routeNumber}',
+      'date': trip.dateTime.isNotEmpty ? trip.dateTime : '—',
+      'price': 'Rs ${trip.fare.toStringAsFixed(0)}',
+    };
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),

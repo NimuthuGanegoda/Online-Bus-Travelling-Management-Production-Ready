@@ -7,6 +7,7 @@ import {
   updateBusAssignment,
 } from '../services/buses.service';
 import { fetchDrivers } from '../services/drivers.service';
+import { exportToCSV } from '../services/csvExport';
 import type { Bus as BusType, StandbyBus } from '../types';
 import './FleetMgmt.css';
 
@@ -343,7 +344,23 @@ export default function FleetMgmt() {
           <button className="fleet-btn primary" onClick={openRegister}>
             <Plus size={16} /> Register Bus
           </button>
-          <button className="fleet-btn outline">
+          <button
+            className="fleet-btn outline"
+            onClick={() =>
+              exportToCSV('busgo_fleet_report', buses, [
+                ['Bus ID', 'id'],
+                ['Registration', 'registration'],
+                ['Route', (b) => `Route ${b.route}`],
+                ['Driver', 'driver'],
+                ['Passengers', (b) => `${b.passengers}/${b.capacity}`],
+                ['Status', 'status'],
+                ['Speed (km/h)', 'speed'],
+                ['Latitude', (b) => b.lat ?? ''],
+                ['Longitude', (b) => b.lng ?? ''],
+                ['Last Updated', (b) => b.lastUpdated ?? ''],
+              ])
+            }
+          >
             <Download size={16} /> Export Report
           </button>
         </div>

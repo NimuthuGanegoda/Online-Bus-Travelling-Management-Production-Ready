@@ -429,8 +429,10 @@ class _RouteSearchScreenState extends State<RouteSearchScreen> {
             ...busProvider.nearbyStops.map((stop) {
               return _buildStopItem(
                 icon: Icons.location_on_outlined,
-                title: 'Stop ${stop.stopId} – ${stop.name}',
-                subtitle: stop.info,
+                title: stop.name.isNotEmpty ? stop.name : 'Bus Stop',
+                subtitle: stop.routes.isNotEmpty
+                    ? '${stop.distanceDisplay} · Routes ${stop.routes.join(', ')}'
+                    : stop.distanceDisplay,
                 showArrow: true,
                 onTap: () => _selectDestination(stop.name),
               );

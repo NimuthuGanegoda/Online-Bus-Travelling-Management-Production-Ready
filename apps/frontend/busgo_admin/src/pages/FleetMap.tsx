@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useLocation } from 'react-router-dom';
-import { RefreshCw, Crosshair, Bus, User, X, Phone, Mail, Star } from 'lucide-react';
-import { fetchAllBuses } from '../services/buses.service';
+import { RefreshCw, Crosshair, Bus, User, X, Phone, Mail, Star, AlertCircle } from 'lucide-react';
+import { fetchAllBuses, fetchStandbyBuses, updateBusStatus } from '../services/buses.service';
 import { fetchAdminRoutes } from '../services/routes.service';
 import { fetchRouteStops, type BusStop } from '../services/stops.service';
 import { fetchRoadPolyline } from '../services/routing.service';
 import { fetchDriverById } from '../services/drivers.service';
-import type { Bus as BusType, Driver } from '../types';
+import type { Bus as BusType, Driver, StandbyBus } from '../types';
 import './FleetMap.css';
 
 // Colombo Fort — fallback when a bus has no GPS fix yet
@@ -67,21 +67,35 @@ export default function FleetMap() {
   const [allBuses, setAllBuses] = useState<BusType[]>([]);
   const [selectedBus, setSelectedBus] = useState<BusType | null>(null);
   const [routeLayers, setRouteLayers] = useState<RouteLayer[]>([]);
+  const [loadingBuses, setLoadingBuses] = useState(true);
+  const [busesError, setBusesError] = useState<string | null>(null);
   const [loadingRoutes, setLoadingRoutes] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
   const [crowdFilter, setCrowdFilter] = useState('all');
   const [driverModal, setDriverModal] = useState<Driver | null>(null);
   const [driverLoading, setDriverLoading] = useState(false);
   const [driverError, setDriverError] = useState<string | null>(null);
+  const [driverModalMessage, setDriverModalMessage] =
+    useState<{ name: string; message: string } | null>(null);
+
+  // Deploy Standby modal
+  const [deployOpen, setDeployOpen] = useState(false);
+  const [standbyBuses, setStandbyBuses] = useState<StandbyBus[]>([]);
+  const [deployLoading, setDeployLoading] = useState(false);
+  const [deployingId, setDeployingId] = useState<string | null>(null);
+  const [deployError, setDeployError] = useState<string | null>(null);
 
   // Load buses and all routes in parallel, then build road polylines for every route
   useEffect(() => {
+    setLoadingBuses(true);
     setLoadingRoutes(true);
+    setBusesError(null);
 
     Promise.all([fetchAllBuses(), fetchAdminRoutes(true)])
       .then(async ([buses, routes]) => {
         const normalised = buses.map(withFallbackCoords);
         setAllBuses(normalised);
+        setLoadingBuses(false);
 
         // Auto-select from Track button or default to first bus
         const target = trackBusId
@@ -120,7 +134,15 @@ export default function FleetMap() {
         setRouteLayers(layers);
         setLoadingRoutes(false);
       })
-      .catch(console.error);
+      .catch((err) => {
+        console.error(err);
+        setBusesError(
+          err?.response?.data?.message ??
+            'Failed to load fleet data. Check your network and that the backend is running.',
+        );
+        setLoadingBuses(false);
+        setLoadingRoutes(false);
+      });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -138,16 +160,58 @@ export default function FleetMap() {
   });
 
   const handleViewDriver = async () => {
-    if (!selectedBus?.driverId) return;
-    setDriverLoading(true);
+    if (!selectedBus) return;
     setDriverError(null);
+
+    // Fallback: bus has no linked driver record (just a denormalised driver_name).
+    if (!selectedBus.driverId) {
+      setDriverModalMessage({
+        name: selectedBus.driver,
+        message:
+          'No driver profile linked to this bus yet. ' +
+          'Assign a driver from the Fleet Management → Edit form to see full details.',
+      });
+      return;
+    }
+    setDriverLoading(true);
     try {
       const driver = await fetchDriverById(selectedBus.driverId);
       setDriverModal(driver);
-    } catch {
-      setDriverError('Failed to load driver profile');
+    } catch (err: any) {
+      setDriverError(err?.response?.data?.message ?? 'Failed to load driver profile');
     } finally {
       setDriverLoading(false);
+    }
+  };
+
+  const handleOpenDeploy = async () => {
+    setDeployOpen(true);
+    setDeployError(null);
+    setDeployLoading(true);
+    try {
+      const list = await fetchStandbyBuses();
+      setStandbyBuses(list);
+    } catch (err: any) {
+      setDeployError(err?.response?.data?.message ?? 'Failed to load standby buses');
+    } finally {
+      setDeployLoading(false);
+    }
+  };
+
+  const handleDeploy = async (busUuid: string) => {
+    setDeployingId(busUuid);
+    setDeployError(null);
+    try {
+      await updateBusStatus(busUuid, 'active');
+      // Refresh the fleet so the deployed bus appears on the map
+      const buses = await fetchAllBuses();
+      setAllBuses(buses.map(withFallbackCoords));
+      // Remove from standby list
+      setStandbyBuses((prev) => prev.filter((b) => b._uuid !== busUuid));
+    } catch (err: any) {
+      setDeployError(err?.response?.data?.message ?? 'Failed to deploy bus');
+    } finally {
+      setDeployingId(null);
     }
   };
 
@@ -166,6 +230,8 @@ export default function FleetMap() {
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="map-filter">
           <option value="all">All Status</option>
           <option value="Active">Active</option>
+          <option value="Standby">Standby</option>
+          <option value="In Repair">In Repair</option>
           <option value="Breakdown">Breakdown</option>
         </select>
         <select value={crowdFilter} onChange={(e) => setCrowdFilter(e.target.value)} className="map-filter">
@@ -285,9 +351,38 @@ export default function FleetMap() {
         </div>
 
         <div className="bus-detail-panel">
-          {!selectedBus ? (
+          {loadingBuses ? (
             <div style={{ padding: '32px', textAlign: 'center', color: '#6b7280', fontSize: '13px' }}>
-              {allBuses.length === 0 ? 'No buses found' : 'Click a bus to view details'}
+              Loading buses…
+            </div>
+          ) : busesError ? (
+            <div style={{ padding: '24px', textAlign: 'center' }}>
+              <AlertCircle size={28} color="#ef4444" style={{ marginBottom: 8 }} />
+              <div style={{ color: '#ef4444', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
+                Couldn't load fleet
+              </div>
+              <div style={{ color: '#6b7280', fontSize: 12, marginBottom: 12 }}>{busesError}</div>
+              <button
+                className="map-btn"
+                onClick={() => window.location.reload()}
+                style={{ margin: '0 auto' }}
+              >
+                <RefreshCw size={14} /> Retry
+              </button>
+            </div>
+          ) : allBuses.length === 0 ? (
+            <div style={{ padding: '24px', textAlign: 'center' }}>
+              <Bus size={32} color="#9ca3af" style={{ marginBottom: 8 }} />
+              <div style={{ color: '#374151', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
+                No buses in the fleet yet
+              </div>
+              <div style={{ color: '#6b7280', fontSize: 12 }}>
+                Register a bus from <strong>Fleet Management</strong> to see it here.
+              </div>
+            </div>
+          ) : !selectedBus ? (
+            <div style={{ padding: '32px', textAlign: 'center', color: '#6b7280', fontSize: '13px' }}>
+              Click a bus marker to view details
             </div>
           ) : (
             <>
@@ -351,13 +446,13 @@ export default function FleetMap() {
           )}
 
           <div className="bus-detail-actions">
-            <button className="detail-action-btn primary">
+            <button className="detail-action-btn primary" onClick={handleOpenDeploy}>
               <Bus size={16} /> Deploy Standby Bus
             </button>
             <button
               className="detail-action-btn secondary"
               onClick={handleViewDriver}
-              disabled={driverLoading || !selectedBus?.driverId}
+              disabled={driverLoading || !selectedBus}
             >
               <User size={16} />
               {driverLoading ? 'Loading…' : 'View Driver Profile'}
@@ -368,6 +463,118 @@ export default function FleetMap() {
           </div>
         </div>
       </div>
+
+      {/* ── No-driver fallback modal ── */}
+      {driverModalMessage && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
+          }}
+          onClick={() => setDriverModalMessage(null)}
+        >
+          <div
+            style={{
+              background: '#fff', borderRadius: 16, width: 340, padding: 24,
+              boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <User size={20} color="#1a6fa8" />
+              <strong style={{ fontSize: 15, color: '#111827' }}>{driverModalMessage.name}</strong>
+            </div>
+            <p style={{ color: '#6b7280', fontSize: 13, lineHeight: 1.5, margin: '8px 0 16px' }}>
+              {driverModalMessage.message}
+            </p>
+            <button
+              className="map-btn primary"
+              style={{ width: '100%' }}
+              onClick={() => setDriverModalMessage(null)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Deploy Standby Bus Modal ── */}
+      {deployOpen && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999,
+          }}
+          onClick={() => setDeployOpen(false)}
+        >
+          <div
+            style={{
+              background: '#fff', borderRadius: 16, width: 380, maxHeight: '70vh',
+              display: 'flex', flexDirection: 'column',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.25)', overflow: 'hidden',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              padding: '16px 20px', display: 'flex', alignItems: 'center',
+              justifyContent: 'space-between', borderBottom: '1px solid #f3f4f6',
+            }}>
+              <strong style={{ fontSize: 15, color: '#111827' }}>Deploy Standby Bus</strong>
+              <button
+                onClick={() => setDeployOpen(false)}
+                style={{
+                  background: '#f3f4f6', border: 'none', borderRadius: 8,
+                  padding: 4, cursor: 'pointer', display: 'flex',
+                }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div style={{ padding: 16, overflowY: 'auto', flex: 1 }}>
+              {deployLoading ? (
+                <div style={{ textAlign: 'center', color: '#6b7280', fontSize: 13, padding: 24 }}>
+                  Loading standby buses…
+                </div>
+              ) : deployError ? (
+                <div style={{ color: '#ef4444', fontSize: 13, padding: 12 }}>{deployError}</div>
+              ) : standbyBuses.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: 24 }}>
+                  <Bus size={28} color="#9ca3af" style={{ marginBottom: 8 }} />
+                  <div style={{ color: '#374151', fontSize: 13, fontWeight: 600 }}>
+                    No standby buses available
+                  </div>
+                  <div style={{ color: '#6b7280', fontSize: 12, marginTop: 4 }}>
+                    Set a bus's status to <strong>Standby</strong> in Fleet Management first.
+                  </div>
+                </div>
+              ) : (
+                standbyBuses.map((b) => (
+                  <div
+                    key={b._uuid}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: 10,
+                      marginBottom: 8,
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{b.id}</div>
+                      <div style={{ fontSize: 11, color: '#6b7280' }}>{b.registration}</div>
+                    </div>
+                    <button
+                      className="map-btn primary"
+                      disabled={deployingId === b._uuid}
+                      onClick={() => handleDeploy(b._uuid)}
+                    >
+                      {deployingId === b._uuid ? 'Deploying…' : 'Deploy'}
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Driver Profile Modal ── */}
       {driverModal && (
