@@ -25,6 +25,9 @@ import paymentsRoutes      from './modules/payments/payments.routes.js';
 // Driver router
 import driverRoutes from './modules/driver/driver.routes.js';
 
+// Scanner router (BUSGO Scanner app — driver-authenticated QR scans)
+import scannerRoutes from './modules/scanner/scanner.routes.js';
+
 // Admin routers
 import adminAuthRoutes          from './modules/admin/auth/admin.auth.routes.js';
 import adminDashboardRoutes     from './modules/admin/dashboard/admin.dashboard.routes.js';
@@ -100,6 +103,7 @@ app.use('/api/notifications',  notificationsRoutes);
 app.use('/api/searches/recent', searchesRoutes);
 app.use('/api/payments',        paymentsRoutes);
 app.use('/api/driver',          driverRoutes);
+app.use('/api/scanner',         scannerRoutes);
 
 // ── Admin API Routes (/api/admin/*) ───────────────────────────
 app.use('/api/admin/auth',          adminAuthRoutes);
