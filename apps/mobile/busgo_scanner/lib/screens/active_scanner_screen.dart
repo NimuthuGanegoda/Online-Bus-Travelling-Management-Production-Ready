@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_colors.dart';
+import '../services/api_service.dart';
 import '../widgets/scanner_topbar.dart';
 import 'scan_success_screen.dart';
 import 'scan_error_screen.dart';
@@ -39,6 +40,8 @@ class _ActiveScannerScreenState extends State<ActiveScannerScreen>
     );
   }
 
+  bool _processing = false;
+
   @override
   void dispose() {
     _scanLineController.dispose();
@@ -54,12 +57,141 @@ class _ActiveScannerScreenState extends State<ActiveScannerScreen>
         child: Column(
           children: [
             const ScannerTopbar(),
-            Expanded(child: _buildViewfinder()),
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _processing ? null : _openQrInputDialog,
+                child: _buildViewfinder(),
+              ),
+            ),
             _buildBottomPanel(),
           ],
         ),
       ),
     );
+  }
+
+  // FR-43: send the scanned QR to the backend and display the verifying
+  // message returned by the server. (Real camera scanning is handled the
+  // same way once mobile_scanner is wired in — this manual entry path is
+  // kept as the testable demo flow.)
+  Future<void> _openQrInputDialog() async {
+    final controller = TextEditingController();
+    final qr = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Scan Passenger QR'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Tap the passenger QR card or paste the code below.',
+              style: TextStyle(fontSize: 13, color: Color(0xFF5A6477)),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: const InputDecoration(
+                hintText: 'BUSGO-xxxxxxxx-xxxx-…',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('Scan'),
+          ),
+        ],
+      ),
+    );
+
+    if (qr == null || qr.isEmpty) return;
+    await _handleScan(qr);
+  }
+
+  Future<void> _handleScan(String qrCode) async {
+    setState(() => _processing = true);
+    try {
+      final result = await ApiService().scan(qrCode);
+      if (!mounted) return;
+
+      // FR-43: small "verifying" message via snackbar.
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: result.action == 'boarded'
+              ? AppColors.success
+              : AppColors.primaryLight,
+          duration: const Duration(seconds: 4),
+          content: Row(
+            children: [
+              Icon(
+                result.action == 'boarded'
+                    ? Icons.login_rounded
+                    : Icons.logout_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  result.message,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      // After a brief moment, jump to the success screen for richer feedback.
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ScanSuccessScreen()),
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.danger,
+          duration: const Duration(seconds: 5),
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  e.message,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ScanErrorScreen()),
+      );
+    } finally {
+      if (mounted) setState(() => _processing = false);
+    }
   }
 
   Widget _buildViewfinder() {

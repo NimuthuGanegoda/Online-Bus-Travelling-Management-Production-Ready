@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_colors.dart';
+import '../services/api_service.dart';
 import 'active_scanner_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -12,9 +13,11 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _driverIdController = TextEditingController(text: 'DRV-00142');
-  final _passwordController = TextEditingController();
+  final _driverIdController = TextEditingController(text: 'kamal@busgo.lk');
+  final _passwordController = TextEditingController(text: 'DRV-001');
   bool _obscurePassword = true;
+  bool _loading = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -186,18 +189,47 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 18),
 
-              // Route selector
-              _buildLabel('SESSION ROUTE'),
+              // Error message (FR-40)
+              if (_errorMessage != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.danger.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: AppColors.danger.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.error_outline,
+                          size: 18, color: AppColors.danger),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _errorMessage!,
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: AppColors.danger,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+              ],
+
               const SizedBox(height: 8),
-              _buildRouteSelector(),
-              const SizedBox(height: 26),
 
               // Button
               SizedBox(
                 width: double.infinity,
                 height: 54,
                 child: ElevatedButton(
-                  onPressed: _handleStartSession,
+                  onPressed: _loading ? null : _handleStartSession,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryLight,
                     foregroundColor: Colors.white,
@@ -206,21 +238,30 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.qr_code_scanner_rounded, size: 22),
-                      const SizedBox(width: 10),
-                      Text(
-                        'Start Scanning Session',
-                        style: GoogleFonts.inter(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.3,
+                  child: _loading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.qr_code_scanner_rounded, size: 22),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Start Scanning Session',
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -335,81 +376,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildRouteSelector() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5F7FA),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFDDE2E8), width: 1.5),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.directions_bus_rounded,
-            size: 24,
-            color: Color(0xFF8A94A6),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Route 138',
-                  style: GoogleFonts.inter(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Colombo Fort → Homagama',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF5A6477),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: AppColors.successLight,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 7,
-                  height: 7,
-                  decoration: const BoxDecoration(
-                    color: AppColors.success,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  'Active',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.success,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildVersion() {
     return Text(
       'BUSGO Scanner v2.1.0  ·  Build 214',
@@ -421,11 +387,34 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _handleStartSession() {
+  Future<void> _handleStartSession() async {
     if (!_formKey.currentState!.validate()) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const ActiveScannerScreen()),
-    );
+
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      // FR-37/FR-39: authenticate against the driver-auth endpoint.
+      await ApiService().login(
+        _driverIdController.text,
+        _passwordController.text,
+      );
+      if (!mounted) return;
+      // FR-41: redirect to scanner dashboard on success.
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const ActiveScannerScreen()),
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _errorMessage = e.message); // FR-40: clear error message
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _errorMessage = 'Unexpected error. Please try again.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 }
