@@ -11,6 +11,11 @@ router.post('/auth/login',    ctrl.login);
 // POST /api/driver/auth/register
 router.post('/auth/register', ctrl.register);
 
+// ── Password recovery (FR-28 / FR-29) — public, no auth ───────
+router.post('/auth/forgot-password/request', ctrl.forgotPasswordRequest);
+router.post('/auth/forgot-password/verify',  ctrl.forgotPasswordVerify);
+router.post('/auth/forgot-password/reset',   ctrl.forgotPasswordReset);
+
 // ── Protected (driver JWT required) ──────────────────────────
 router.use(verifyDriver);
 

@@ -27,3 +27,8 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 -- 4. Add 'accident' to the emergency_type_enum so the driver app's
 --    "Accident" alert type can be saved.
 ALTER TYPE emergency_type_enum ADD VALUE IF NOT EXISTS 'accident';
+
+-- 5. Password recovery columns for drivers (FR-28 / FR-29).
+ALTER TABLE drivers
+  ADD COLUMN IF NOT EXISTS reset_pin            TEXT,
+  ADD COLUMN IF NOT EXISTS reset_pin_expires_at TIMESTAMPTZ;
