@@ -37,9 +37,11 @@ class _QrCardScreenState extends State<QrCardScreen> {
             if (user == null) {
               return const Center(child: CircularProgressIndicator());
             }
-            final qrData = user.qrCode.isNotEmpty
-                ? user.qrCode
-                : 'BUSGO-${user.id}';
+            // Always BUSGO-<user.id>: matches the format expected by the
+            // scanner backend (POST /api/scanner/scan parses out user.id).
+            // The DB's `qr_token` is a separate concept and is not used
+            // for boarding/alighting in the current scope.
+            final qrData = 'BUSGO-${user.id}';
             return SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
