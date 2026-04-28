@@ -20,6 +20,12 @@ class _ActiveScannerScreenState extends State<ActiveScannerScreen>
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
+  bool _processing = false;
+
+  // Real on-board count from /api/driver/me (mapped from bus.crowd_level)
+  int _onBoard = 0;
+  int _capacity = 50;
+
   @override
   void initState() {
     super.initState();
@@ -30,7 +36,6 @@ class _ActiveScannerScreenState extends State<ActiveScannerScreen>
     _scanLineAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _scanLineController, curve: Curves.easeInOut),
     );
-
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -38,9 +43,20 @@ class _ActiveScannerScreenState extends State<ActiveScannerScreen>
     _pulseAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+
+    _refreshOnBoardCount();
   }
 
-  bool _processing = false;
+  Future<void> _refreshOnBoardCount() async {
+    try {
+      final res = await ApiService().getOnBoardCount();
+      if (!mounted || res == null) return;
+      setState(() {
+        _onBoard = res.passengers;
+        _capacity = res.capacity;
+      });
+    } catch (_) {/* leave count as-is on error */}
+  }
 
   @override
   void dispose() {
@@ -380,40 +396,6 @@ class _ActiveScannerScreenState extends State<ActiveScannerScreen>
                 ),
               ),
 
-              // Demo buttons
-              Positioned(
-                bottom: 14,
-                left: 0,
-                right: 0,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _demoBtn(
-                      'Simulate Success',
-                      AppColors.success,
-                      Icons.check_circle_outline,
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ScanSuccessScreen(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    _demoBtn(
-                      'Simulate Error',
-                      AppColors.danger,
-                      Icons.error_outline,
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ScanErrorScreen(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ],
           );
         },
@@ -459,40 +441,6 @@ class _ActiveScannerScreenState extends State<ActiveScannerScreen>
     );
   }
 
-  Widget _demoBtn(
-    String label,
-    Color color,
-    IconData icon,
-    VoidCallback onTap,
-  ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.15),
-          border: Border.all(color: color.withValues(alpha: 0.4)),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 15, color: color.withValues(alpha: 0.8)),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                color: Colors.white.withValues(alpha: 0.8),
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildBottomPanel() {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
@@ -529,7 +477,7 @@ class _ActiveScannerScreenState extends State<ActiveScannerScreen>
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Max capacity: 50',
+                      'Max capacity: $_capacity',
                       style: GoogleFonts.inter(
                         color: AppColors.softBlue.withValues(alpha: 0.7),
                         fontSize: 13,
@@ -554,7 +502,7 @@ class _ActiveScannerScreenState extends State<ActiveScannerScreen>
                 child: Row(
                   children: [
                     Text(
-                      '32',
+                      '$_onBoard',
                       style: GoogleFonts.inter(
                         color: Colors.white,
                         fontSize: 24,
@@ -563,7 +511,7 @@ class _ActiveScannerScreenState extends State<ActiveScannerScreen>
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      '/ 50',
+                      '/ $_capacity',
                       style: GoogleFonts.inter(
                         color: AppColors.softBlue.withValues(alpha: 0.6),
                         fontSize: 16,
@@ -581,7 +529,9 @@ class _ActiveScannerScreenState extends State<ActiveScannerScreen>
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
-              value: 32 / 50,
+              value: _capacity > 0
+                  ? (_onBoard / _capacity).clamp(0.0, 1.0)
+                  : 0.0,
               minHeight: 5,
               backgroundColor: Colors.white.withValues(alpha: 0.08),
               valueColor: const AlwaysStoppedAnimation<Color>(AppColors.online),

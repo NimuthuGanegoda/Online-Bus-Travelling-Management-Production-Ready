@@ -15,3 +15,17 @@ export async function scan(req, res, next) {
     next(err);
   }
 }
+
+/**
+ * GET /api/scanner/onboard
+ * Returns the live on-board passenger count for the driver's bus.
+ */
+export async function onBoard(req, res, next) {
+  try {
+    const result = await service.getOnBoardForDriver(req.driver.id);
+    return sendSuccess(res, result, 'On-board count');
+  } catch (err) {
+    if (err.statusCode) return sendError(res, err.message, err.statusCode, err.code);
+    next(err);
+  }
+}

@@ -141,6 +141,50 @@ class ApiService {
     );
   }
 
+  // ── Driver profile (used to seed the on-board count) ──────────
+
+  /// Fetch the signed-in driver's profile (incl. assigned bus).
+  /// Returns the bus's crowd_level mapped to a passenger number, or null
+  /// if the driver isn't currently assigned to a bus.
+  Future<({int passengers, int capacity})?> getOnBoardCount() async {
+    final token = await getStoredToken();
+    if (token == null) throw ApiException('Not signed in');
+
+    http.Response res;
+    try {
+      res = await http
+          .get(
+            Uri.parse('$_baseUrl/driver/me'),
+            headers: {'Authorization': 'Bearer $token'},
+          )
+          .timeout(const Duration(seconds: 15));
+    } catch (e) {
+      throw ApiException('Cannot reach the server.');
+    }
+
+    final json = _safeDecode(res.body);
+    if (res.statusCode < 200 || res.statusCode >= 300 || json['success'] != true) {
+      throw ApiException(
+        (json['message'] as String?) ?? 'Could not load profile',
+        statusCode: res.statusCode,
+      );
+    }
+
+    final data = (json['data'] ?? {}) as Map<String, dynamic>;
+    final bus = data['bus'] as Map<String, dynamic>?;
+    if (bus == null) return null;
+
+    final crowd = bus['crowd_level'] as String?;
+    final count = switch (crowd) {
+      'full'   => 50,
+      'high'   => 35,
+      'medium' => 22,
+      'low'    => 8,
+      _        => 0,
+    };
+    return (passengers: count, capacity: 50);
+  }
+
   // ── Scan (FR-43) ───────────────────────────────────────────────
 
   /// Send a scanned QR payload to the backend. Returns whether the

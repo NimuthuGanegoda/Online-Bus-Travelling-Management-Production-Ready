@@ -95,11 +95,15 @@ export async function recordScan(driverId, { qr_code }) {
 
     if (alightErr) throw alightErr;
 
+    const onBoard = await _countOnBoard(bus.id);
+    await _syncCrowdLevel(bus.id, onBoard);
+
     return {
       action:    'alighted',
       passenger: { id: user.id, name: user.full_name, email: user.email },
       bus:       { id: bus.id, number: bus.bus_number,
-                   route: bus.bus_routes?.route_number ?? null },
+                   route: bus.bus_routes?.route_number ?? null,
+                   on_board: onBoard, capacity: 50 },
       trip,
       message:   `Trip completed for ${user.full_name}. Fare Rs ${fareLkr}.`,
     };
@@ -119,12 +123,61 @@ export async function recordScan(driverId, { qr_code }) {
 
   if (boardErr) throw boardErr;
 
+  const onBoard = await _countOnBoard(bus.id);
+  await _syncCrowdLevel(bus.id, onBoard);
+
   return {
     action:    'boarded',
     passenger: { id: user.id, name: user.full_name, email: user.email },
     bus:       { id: bus.id, number: bus.bus_number,
-                 route: bus.bus_routes?.route_number ?? null },
+                 route: bus.bus_routes?.route_number ?? null,
+                 on_board: onBoard, capacity: 50 },
     trip,
     message:   `${user.full_name} has boarded successfully.`,
   };
+}
+
+/**
+ * Live on-board count for the bus assigned to this driver.
+ * Returns { on_board, capacity } so the scanner UI can show real numbers.
+ */
+export async function getOnBoardForDriver(driverId) {
+  const { data: buses } = await supabase
+    .from('buses')
+    .select('id')
+    .eq('driver_id', driverId)
+    .limit(1);
+  const bus = buses?.[0];
+  if (!bus) return { on_board: 0, capacity: 50 };
+
+  const onBoard = await _countOnBoard(bus.id);
+  return { on_board: onBoard, capacity: 50 };
+}
+
+/**
+ * Count ongoing trips for a bus — the real on-board passenger count.
+ */
+async function _countOnBoard(busId) {
+  const { count } = await supabase
+    .from('trips')
+    .select('id', { count: 'exact', head: true })
+    .eq('bus_id', busId)
+    .eq('status', 'ongoing');
+  return count ?? 0;
+}
+
+/**
+ * Keep buses.crowd_level in sync with the live on-board count so the
+ * passenger app's live map shows accurate crowd colors.
+ */
+async function _syncCrowdLevel(busId, onBoard) {
+  let level = 'low';
+  if (onBoard >= 41)      level = 'full';
+  else if (onBoard >= 26) level = 'high';
+  else if (onBoard >= 11) level = 'medium';
+
+  await supabase
+    .from('buses')
+    .update({ crowd_level: level })
+    .eq('id', busId);
 }

@@ -20,4 +20,7 @@ router.use(verifyDriver);
 // POST /api/scanner/scan  — record a passenger boarding/alighting (FR-43)
 router.post('/scan', validate(scanSchema), ctrl.scan);
 
+// GET  /api/scanner/onboard — live on-board count for the driver's bus
+router.get('/onboard', ctrl.onBoard);
+
 export default router;
