@@ -55,6 +55,10 @@ class TripProvider extends ChangeNotifier {
   // closest point along the polyline → time to advance the stop pointer.
   double? _minDistToNextStopM;
 
+  // Total passengers who boarded this bus today, from /api/scanner/onboard.
+  int _boardedToday = 0;
+  int get boardedToday => _boardedToday;
+
   RouteStop? get previousStop {
     if (_currentRoute == null || _currentStopIndex == 0) return null;
     return _currentRoute!.stops[_currentStopIndex - 1];
@@ -167,9 +171,12 @@ class TripProvider extends ChangeNotifier {
     if (_currentTrip == null) return;
     try {
       final res = await _api.getOnBoardCount();
-      final onBoard = (res.data?['data']?['on_board'] as num?)?.toInt();
+      final data = res.data?['data'] as Map<String, dynamic>?;
+      final onBoard = (data?['on_board'] as num?)?.toInt();
+      final boarded = (data?['boarded_today'] as num?)?.toInt() ?? 0;
       if (onBoard == null) return;
       _currentTrip = _currentTrip!.copyWith(currentPassengers: onBoard);
+      _boardedToday = boarded;
       notifyListeners();
     } catch (_) {/* ignore network hiccups */}
   }

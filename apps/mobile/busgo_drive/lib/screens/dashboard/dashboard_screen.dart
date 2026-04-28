@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -17,6 +18,8 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  Timer? _pollTimer;
+
   @override
   void initState() {
     super.initState();
@@ -31,10 +34,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
             rp.routes.where((r) => r.routeNumber == '138').firstOrNull;
         if (route138 != null) tp.startTrip(route138);
       }
-      // Seed passenger gauge from the bus's actual crowd_level on backend
-      // so the dashboard doesn't open at 0/50 when the bus already has riders.
+      // Seed passenger gauge + Boarded counter from the same backend
+      // source the scanner uses, then refresh every 10 s.
       await tp.seedPassengersFromBackend();
+      _pollTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+        if (mounted) tp.seedPassengersFromBackend();
+      });
     });
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
   }
 
   void _goToMapTab() {
@@ -689,7 +701,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final durationMin = startTime != null
         ? DateTime.now().difference(startTime).inMinutes
         : 0;
-    final boarded = trip.currentTrip?.passengersBoarded ?? 0;
+    final boarded = trip.boardedToday;
 
     return Row(
       children: [

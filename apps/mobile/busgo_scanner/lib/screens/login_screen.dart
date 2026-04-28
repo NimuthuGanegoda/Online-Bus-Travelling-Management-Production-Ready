@@ -14,7 +14,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _driverIdController = TextEditingController(text: 'kamal@busgo.lk');
-  final _passwordController = TextEditingController(text: 'DRV-001');
+  final _passwordController = TextEditingController(text: '12345678');
   bool _obscurePassword = true;
   bool _loading = false;
   String? _errorMessage;

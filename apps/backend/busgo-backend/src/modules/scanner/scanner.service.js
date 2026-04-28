@@ -148,12 +148,28 @@ export async function recordScan(driverId, { qr_code }) {
  */
 export async function getOnBoardForDriver(driverId) {
   const bus = await _findDriverBus(driverId, 'id, crowd_level');
-  if (!bus) return { on_board: 0, capacity: 50 };
+  if (!bus) return { on_board: 0, capacity: 50, boarded_today: 0 };
 
-  const baseline = _crowdToCount(bus.crowd_level);
-  const trips    = await _countOnBoard(bus.id);
-  const total    = Math.min(50, baseline + trips);
-  return { on_board: total, capacity: 50 };
+  const baseline      = _crowdToCount(bus.crowd_level);
+  const trips         = await _countOnBoard(bus.id);
+  const boardedToday  = await _countBoardedToday(bus.id);
+  const total         = Math.min(50, baseline + trips);
+  return { on_board: total, capacity: 50, boarded_today: boardedToday };
+}
+
+/**
+ * Total boardings (ongoing + completed) for this bus since midnight today.
+ * Used by the driver dashboard's "Boarded" stat tile.
+ */
+async function _countBoardedToday(busId) {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+  const { count } = await supabase
+    .from('trips')
+    .select('id', { count: 'exact', head: true })
+    .eq('bus_id', busId)
+    .gte('boarded_at', startOfDay.toISOString());
+  return count ?? 0;
 }
 
 /**
