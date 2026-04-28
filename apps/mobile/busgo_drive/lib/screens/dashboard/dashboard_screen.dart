@@ -310,41 +310,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           const SizedBox(height: 14),
-          // Manual +/- controls — push to backend immediately so the admin
-          // and passenger apps see the new crowd_level in real time.
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _passengerStepButton(
-                icon: Icons.remove_rounded,
-                onTap: () => context.read<TripProvider>().adjustPassengers(-1),
-              ),
-              const SizedBox(width: 18),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'BOARD / ALIGHT',
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF90CAF9),
-                    letterSpacing: 0.8,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 18),
-              _passengerStepButton(
-                icon: Icons.add_rounded,
-                onTap: () => context.read<TripProvider>().adjustPassengers(1),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -358,32 +323,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _passengerStepButton({
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.2),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        alignment: Alignment.center,
-        child: Icon(icon, size: 22, color: const Color(0xFF1E5AA8)),
       ),
     );
   }
