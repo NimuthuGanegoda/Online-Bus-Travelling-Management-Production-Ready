@@ -142,21 +142,16 @@ class TripProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Seed the initial passenger count from the bus's saved crowd_level
-  /// in the backend. Called on dashboard load so the gauge isn't stuck at 0.
+  /// Pull the live passenger count from the same backend source the
+  /// scanner uses (/api/scanner/onboard). This keeps the driver dashboard
+  /// gauge in sync with what the conductor's scanner shows.
   Future<void> seedPassengersFromBackend() async {
     if (_currentTrip == null) return;
     try {
-      final res = await _api.getMe();
-      final crowd = res.data?['data']?['bus']?['crowd_level'] as String?;
-      if (crowd == null) return;
-      final initial = switch (crowd) {
-        'full'   => 50,
-        'high'   => 35,
-        'medium' => 22,
-        _        => 8, // 'low' or anything unknown
-      };
-      _currentTrip = _currentTrip!.copyWith(currentPassengers: initial);
+      final res = await _api.getOnBoardCount();
+      final onBoard = (res.data?['data']?['on_board'] as num?)?.toInt();
+      if (onBoard == null) return;
+      _currentTrip = _currentTrip!.copyWith(currentPassengers: onBoard);
       notifyListeners();
     } catch (_) {/* ignore network hiccups */}
   }
