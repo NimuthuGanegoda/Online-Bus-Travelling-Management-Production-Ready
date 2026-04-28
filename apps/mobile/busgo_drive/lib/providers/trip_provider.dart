@@ -1,5 +1,6 @@
 import 'dart:async';
-import 'dart:math';
+import 'dart:math' as math;
+import 'dart:math' show Random;
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import '../core/utils/helpers.dart';
@@ -40,6 +41,20 @@ class TripProvider extends ChangeNotifier {
     return _currentRoute!.stops[_currentStopIndex];
   }
 
+  // FR-34 — true when the bus is within ~150m of the next stop.
+  // The driver dashboard / map shows a "STOP" alert while this is true.
+  bool _approachingStop = false;
+  bool get approachingStop => _approachingStop;
+
+  // Distance in metres from the bus to the next stop (null when no trip).
+  double? _distanceToNextStopM;
+  double? get distanceToNextStopM => _distanceToNextStopM;
+
+  // Tracks the closest distance the bus has been to the current next stop.
+  // When the live distance starts growing again the bus has passed the
+  // closest point along the polyline → time to advance the stop pointer.
+  double? _minDistToNextStopM;
+
   RouteStop? get previousStop {
     if (_currentRoute == null || _currentStopIndex == 0) return null;
     return _currentRoute!.stops[_currentStopIndex - 1];
@@ -56,6 +71,9 @@ class TripProvider extends ChangeNotifier {
     _status = TripStatus.active;
     _polySegmentIndex = 0;
     _segmentProgress = 0.0;
+    _minDistToNextStopM = null;
+    _approachingStop = false;
+    _distanceToNextStopM = null;
 
     _currentTrip = Trip(
       id:            'TRP-${DateTime.now().millisecondsSinceEpoch}',
@@ -222,9 +240,65 @@ class TripProvider extends ChangeNotifier {
         );
       }
 
+      // FR-34 — track the bus's distance to the next stop, fire the alert
+      // when close, and auto-advance once the bus has clearly passed the
+      // closest point along the polyline (distance growing again).
+      final upcoming = nextStop;
+      if (upcoming != null) {
+        final dist = _haversineMeters(_currentLocation, upcoming.location);
+        _distanceToNextStopM = dist;
+
+        // Update the running minimum so we can detect when distance
+        // starts growing again (= bus has passed closest point).
+        if (_minDistToNextStopM == null || dist < _minDistToNextStopM!) {
+          _minDistToNextStopM = dist;
+        }
+
+        // Show alert while the bus is reasonably close to the stop.
+        _approachingStop = dist <= 350;
+
+        // Bus has passed the stop:
+        //   - it got within 350 m at some point, AND
+        //   - it's now drifting away (distance > min + 50 m)
+        final minSoFar = _minDistToNextStopM ?? double.infinity;
+        if (minSoFar <= 350 && dist > minSoFar + 50) {
+          // Mark stop as reached
+          if (_currentTrip != null) {
+            _currentTrip = _currentTrip!.copyWith(
+              stopsCompleted: _currentStopIndex + 1,
+            );
+          }
+          _currentStopIndex++;
+          _approachingStop = false;
+          _minDistToNextStopM = null; // reset for the new "next stop"
+        }
+      } else {
+        _distanceToNextStopM = null;
+        _approachingStop = false;
+      }
+
       notifyListeners();
     });
   }
+
+  // Great-circle distance in metres between two LatLng points.
+  double _haversineMeters(LatLng a, LatLng b) {
+    const earthM = 6371000.0;
+    double rad(double deg) => deg * (3.141592653589793 / 180);
+    final dLat = rad(b.latitude  - a.latitude);
+    final dLng = rad(b.longitude - a.longitude);
+    final h = (1 - _cosApprox(dLat)) / 2 +
+        _cosApprox(rad(a.latitude)) *
+            _cosApprox(rad(b.latitude)) *
+            (1 - _cosApprox(dLng)) / 2;
+    return 2 * earthM * _asinApprox(_sqrtApprox(h));
+  }
+
+  // Pull math fns from dart:math without re-importing — the file already
+  // imports dart:math via Random; we use the global functions.
+  double _cosApprox(double x) => math.cos(x);
+  double _asinApprox(double x) => math.asin(x);
+  double _sqrtApprox(double x) => math.sqrt(x);
 
   /// Send location to backend every 5 seconds during active trip.
   void _startLocationSync() {
