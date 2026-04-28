@@ -26,6 +26,47 @@ export async function register(req, res, next) {
   } catch (err) { next(err); }
 }
 
+// ── Password recovery (FR-28 / FR-29) ─────────────────────────
+
+export async function forgotPasswordRequest(req, res, next) {
+  try {
+    const { email } = req.body;
+    if (!email) return sendError(res, 'email is required', 400, 'VALIDATION_ERROR');
+    await authSvc.requestDriverPasswordReset(email);
+    // Always 200 — no enumeration
+    sendSuccess(res, {}, 'If that email exists, a reset PIN has been sent');
+  } catch (err) { next(err); }
+}
+
+export async function forgotPasswordVerify(req, res, next) {
+  try {
+    const { email, pin } = req.body;
+    if (!email || !pin) return sendError(res, 'email and pin are required', 400, 'VALIDATION_ERROR');
+    const result = await authSvc.verifyDriverResetPin(email, pin);
+    sendSuccess(res, result, 'PIN verified');
+  } catch (err) {
+    if (err.statusCode) return sendError(res, err.message, err.statusCode, err.code);
+    next(err);
+  }
+}
+
+export async function forgotPasswordReset(req, res, next) {
+  try {
+    const { reset_token, new_password } = req.body;
+    if (!reset_token || !new_password) {
+      return sendError(res, 'reset_token and new_password are required', 400, 'VALIDATION_ERROR');
+    }
+    if (new_password.length < 8) {
+      return sendError(res, 'Password must be at least 8 characters', 400, 'WEAK_PASSWORD');
+    }
+    await authSvc.resetDriverPassword({ reset_token, new_password });
+    sendSuccess(res, {}, 'Password reset successful. Please log in with your new password.');
+  } catch (err) {
+    if (err.statusCode) return sendError(res, err.message, err.statusCode, err.code);
+    next(err);
+  }
+}
+
 // ── Profile & data ────────────────────────────────────────────
 
 export async function getMe(req, res, next) {
