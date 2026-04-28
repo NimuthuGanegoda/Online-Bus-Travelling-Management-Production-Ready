@@ -24,6 +24,9 @@ export async function getDriverMe(driverId) {
     .from('buses')
     .select('id, bus_number, registration, status, current_lat, current_lng, crowd_level')
     .eq('driver_id', driverId)
+    .order('status', { ascending: true })            // 'active' before 'standby'
+    .order('last_location_update', { ascending: false, nullsFirst: false })
+    .order('bus_number', { ascending: true })
     .limit(1);
 
   return { ...driver, bus: buses?.[0] || null };
@@ -82,6 +85,9 @@ export async function updateDriverLocation(driverId, { latitude, longitude, spee
     .from('buses')
     .select('id')
     .eq('driver_id', driverId)
+    .order('status', { ascending: true })            // 'active' before 'standby'
+    .order('last_location_update', { ascending: false, nullsFirst: false })
+    .order('bus_number', { ascending: true })
     .limit(1);
 
   if (busErr) throw busErr;
@@ -124,6 +130,9 @@ export async function updatePassengerCount(driverId, { crowd_level }) {
     .from('buses')
     .select('id')
     .eq('driver_id', driverId)
+    .order('status', { ascending: true })            // 'active' before 'standby'
+    .order('last_location_update', { ascending: false, nullsFirst: false })
+    .order('bus_number', { ascending: true })
     .limit(1);
 
   const bus = buses?.[0];
@@ -160,6 +169,9 @@ export async function createDriverAlert(driverId, { alert_type, description, lat
     .from('buses')
     .select('id, bus_number')
     .eq('driver_id', driverId)
+    .order('status', { ascending: true })            // 'active' before 'standby'
+    .order('last_location_update', { ascending: false, nullsFirst: false })
+    .order('bus_number', { ascending: true })
     .limit(1);
   const bus = buses?.[0];
 

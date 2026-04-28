@@ -56,14 +56,12 @@ export async function recordScan(driverId, { qr_code }) {
     throw err;
   }
 
-  // 3. Find the driver's bus + route
-  const { data: buses } = await supabase
-    .from('buses')
-    .select('id, bus_number, route_id, crowd_level, bus_routes ( route_number, route_name )')
-    .eq('driver_id', driverId)
-    .limit(1);
-
-  const bus = buses?.[0];
+  // 3. Find the driver's bus + route (picks the active one when multiple
+  // are linked — see _findDriverBus for the ordering rules).
+  const bus = await _findDriverBus(
+    driverId,
+    'id, bus_number, route_id, crowd_level, bus_routes ( route_number, route_name )',
+  );
   if (!bus) {
     const err = new Error('Driver is not assigned to any bus.');
     err.statusCode = 400;
@@ -149,18 +147,31 @@ export async function recordScan(driverId, { qr_code }) {
  * then adds (boarding) or removes (alighting) from the live count.
  */
 export async function getOnBoardForDriver(driverId) {
-  const { data: buses } = await supabase
-    .from('buses')
-    .select('id, crowd_level')
-    .eq('driver_id', driverId)
-    .limit(1);
-  const bus = buses?.[0];
+  const bus = await _findDriverBus(driverId, 'id, crowd_level');
   if (!bus) return { on_board: 0, capacity: 50 };
 
   const baseline = _crowdToCount(bus.crowd_level);
   const trips    = await _countOnBoard(bus.id);
-  const total    = (baseline + trips).clamp?.(0, 50) ?? Math.min(50, baseline + trips);
+  const total    = Math.min(50, baseline + trips);
   return { on_board: total, capacity: 50 };
+}
+
+/**
+ * Picks the right bus when a driver is linked to several buses.
+ * Order of preference:
+ *   1. status = 'active'
+ *   2. most recent last_location_update
+ *   3. anything (deterministic via bus_number)
+ */
+async function _findDriverBus(driverId, columns) {
+  const { data: buses } = await supabase
+    .from('buses')
+    .select(`${columns}, status, last_location_update, bus_number`)
+    .eq('driver_id', driverId)
+    .order('status', { ascending: true })   // 'active' sorts before 'standby'
+    .order('last_location_update', { ascending: false, nullsFirst: false })
+    .order('bus_number', { ascending: true });
+  return buses?.[0] ?? null;
 }
 
 function _crowdToCount(level) {
