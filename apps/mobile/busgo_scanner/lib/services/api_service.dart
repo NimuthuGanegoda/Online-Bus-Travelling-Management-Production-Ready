@@ -35,6 +35,8 @@ class ScanResult {
   final String? routeNumber;
   final double? fare;
   final String message;
+  final int? onBoard;        // Live on-board count after this scan
+  final int? capacity;
 
   ScanResult({
     required this.action,
@@ -43,6 +45,8 @@ class ScanResult {
     this.routeNumber,
     this.fare,
     required this.message,
+    this.onBoard,
+    this.capacity,
   });
 }
 
@@ -143,9 +147,8 @@ class ApiService {
 
   // ── Driver profile (used to seed the on-board count) ──────────
 
-  /// Fetch the signed-in driver's profile (incl. assigned bus).
-  /// Returns the bus's crowd_level mapped to a passenger number, or null
-  /// if the driver isn't currently assigned to a bus.
+  /// Live on-board passenger count for the driver's bus, computed by the
+  /// backend from the count of `trips.status='ongoing'` for this bus.
   Future<({int passengers, int capacity})?> getOnBoardCount() async {
     final token = await getStoredToken();
     if (token == null) throw ApiException('Not signed in');
@@ -154,7 +157,7 @@ class ApiService {
     try {
       res = await http
           .get(
-            Uri.parse('$_baseUrl/driver/me'),
+            Uri.parse('$_baseUrl/scanner/onboard'),
             headers: {'Authorization': 'Bearer $token'},
           )
           .timeout(const Duration(seconds: 15));
@@ -165,24 +168,16 @@ class ApiService {
     final json = _safeDecode(res.body);
     if (res.statusCode < 200 || res.statusCode >= 300 || json['success'] != true) {
       throw ApiException(
-        (json['message'] as String?) ?? 'Could not load profile',
+        (json['message'] as String?) ?? 'Could not load on-board count',
         statusCode: res.statusCode,
       );
     }
 
     final data = (json['data'] ?? {}) as Map<String, dynamic>;
-    final bus = data['bus'] as Map<String, dynamic>?;
-    if (bus == null) return null;
-
-    final crowd = bus['crowd_level'] as String?;
-    final count = switch (crowd) {
-      'full'   => 50,
-      'high'   => 35,
-      'medium' => 22,
-      'low'    => 8,
-      _        => 0,
-    };
-    return (passengers: count, capacity: 50);
+    return (
+      passengers: (data['on_board'] as num?)?.toInt() ?? 0,
+      capacity:   (data['capacity'] as num?)?.toInt() ?? 50,
+    );
   }
 
   // ── Scan (FR-43) ───────────────────────────────────────────────
@@ -222,6 +217,8 @@ class ApiService {
         routeNumber:   bus['route'] as String?,
         fare:          (trip['fare_lkr'] as num?)?.toDouble(),
         message:       (data['message'] as String?) ?? (json['message'] as String? ?? 'Scan recorded'),
+        onBoard:       (bus['on_board'] as num?)?.toInt(),
+        capacity:      (bus['capacity'] as num?)?.toInt(),
       );
     }
 

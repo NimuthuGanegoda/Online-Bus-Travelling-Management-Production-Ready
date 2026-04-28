@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_colors.dart';
 import '../services/api_service.dart';
 import '../widgets/scanner_topbar.dart';
+import 'login_screen.dart';
 import 'scan_success_screen.dart';
 import 'scan_error_screen.dart';
 
@@ -45,6 +46,40 @@ class _ActiveScannerScreenState extends State<ActiveScannerScreen>
     );
 
     _refreshOnBoardCount();
+  }
+
+  Future<void> _handleEndSession() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('End scanning session?'),
+        content: const Text(
+          'You will be signed out and returned to the login screen.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('End Session'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    await ApiService().clearSession();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
   }
 
   Future<void> _refreshOnBoardCount() async {
@@ -168,6 +203,15 @@ class _ActiveScannerScreenState extends State<ActiveScannerScreen>
           ),
         ),
       );
+
+      // Use the on-board count returned by the scan response — accurate
+      // and avoids a follow-up round trip.
+      if (result.onBoard != null) {
+        setState(() {
+          _onBoard  = result.onBoard!;
+          _capacity = result.capacity ?? _capacity;
+        });
+      }
 
       // After a brief moment, jump to the success screen for richer feedback.
       await Future.delayed(const Duration(milliseconds: 300));
@@ -614,7 +658,7 @@ class _ActiveScannerScreenState extends State<ActiveScannerScreen>
               SizedBox(
                 height: 48,
                 child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: _handleEndSession,
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(
                       color: AppColors.danger.withValues(alpha: 0.4),
