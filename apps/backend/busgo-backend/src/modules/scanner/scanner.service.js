@@ -59,7 +59,7 @@ export async function recordScan(driverId, { qr_code }) {
   // 3. Find the driver's bus + route
   const { data: buses } = await supabase
     .from('buses')
-    .select('id, bus_number, route_id, bus_routes ( route_number, route_name )')
+    .select('id, bus_number, route_id, crowd_level, bus_routes ( route_number, route_name )')
     .eq('driver_id', driverId)
     .limit(1);
 
@@ -95,8 +95,8 @@ export async function recordScan(driverId, { qr_code }) {
 
     if (alightErr) throw alightErr;
 
-    const onBoard = await _countOnBoard(bus.id);
-    await _syncCrowdLevel(bus.id, onBoard);
+    const tripsCount = await _countOnBoard(bus.id);
+    const onBoard    = Math.min(50, _crowdToCount(bus.crowd_level) + tripsCount);
 
     return {
       action:    'alighted',
@@ -123,8 +123,8 @@ export async function recordScan(driverId, { qr_code }) {
 
   if (boardErr) throw boardErr;
 
-  const onBoard = await _countOnBoard(bus.id);
-  await _syncCrowdLevel(bus.id, onBoard);
+  const tripsCountB = await _countOnBoard(bus.id);
+  const onBoard     = Math.min(50, _crowdToCount(bus.crowd_level) + tripsCountB);
 
   return {
     action:    'boarded',
@@ -139,23 +139,42 @@ export async function recordScan(driverId, { qr_code }) {
 
 /**
  * Live on-board count for the bus assigned to this driver.
- * Returns { on_board, capacity } so the scanner UI can show real numbers.
+ * Returns { on_board, capacity } so the scanner UI shows realistic numbers.
+ *
+ * Calculation:
+ *   on_board = baseline (from bus.crowd_level)  + active scanned trips
+ *
+ * The baseline represents passengers who boarded before tracking started —
+ * derived from the bus's seeded/admin-set `crowd_level`. Each scanner scan
+ * then adds (boarding) or removes (alighting) from the live count.
  */
 export async function getOnBoardForDriver(driverId) {
   const { data: buses } = await supabase
     .from('buses')
-    .select('id')
+    .select('id, crowd_level')
     .eq('driver_id', driverId)
     .limit(1);
   const bus = buses?.[0];
   if (!bus) return { on_board: 0, capacity: 50 };
 
-  const onBoard = await _countOnBoard(bus.id);
-  return { on_board: onBoard, capacity: 50 };
+  const baseline = _crowdToCount(bus.crowd_level);
+  const trips    = await _countOnBoard(bus.id);
+  const total    = (baseline + trips).clamp?.(0, 50) ?? Math.min(50, baseline + trips);
+  return { on_board: total, capacity: 50 };
+}
+
+function _crowdToCount(level) {
+  switch (level) {
+    case 'full':   return 45;
+    case 'high':   return 32;
+    case 'medium': return 18;
+    case 'low':    return 6;
+    default:       return 0;
+  }
 }
 
 /**
- * Count ongoing trips for a bus — the real on-board passenger count.
+ * Count ongoing trips for a bus — passengers who boarded via scanner.
  */
 async function _countOnBoard(busId) {
   const { count } = await supabase
@@ -166,18 +185,7 @@ async function _countOnBoard(busId) {
   return count ?? 0;
 }
 
-/**
- * Keep buses.crowd_level in sync with the live on-board count so the
- * passenger app's live map shows accurate crowd colors.
- */
-async function _syncCrowdLevel(busId, onBoard) {
-  let level = 'low';
-  if (onBoard >= 41)      level = 'full';
-  else if (onBoard >= 26) level = 'high';
-  else if (onBoard >= 11) level = 'medium';
-
-  await supabase
-    .from('buses')
-    .update({ crowd_level: level })
-    .eq('id', busId);
-}
+// Note: bus.crowd_level is now managed only by admin/driver explicit
+// adjustments (driver app +/- buttons, admin Fleet Mgmt). The scanner
+// no longer overwrites it on each scan because that creates a feedback
+// loop with the baseline-derived display count.
