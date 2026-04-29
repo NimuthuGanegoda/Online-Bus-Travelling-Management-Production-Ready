@@ -84,6 +84,23 @@ class ApiService {
         'password':  password,
       });
 
+  // ── Password recovery (FR-28 / FR-29) ──────────────────────────
+
+  Future<Response> requestPasswordReset(String email) =>
+      _dio.post('/auth/forgot-password/request', data: {'email': email});
+
+  Future<Response> verifyResetPin(String email, String pin) =>
+      _dio.post('/auth/forgot-password/verify', data: {'email': email, 'pin': pin});
+
+  Future<Response> resetPassword({
+    required String resetToken,
+    required String newPassword,
+  }) =>
+      _dio.post('/auth/forgot-password/reset', data: {
+        'reset_token':  resetToken,
+        'new_password': newPassword,
+      });
+
   // ── Profile ───────────────────────────────────────────────────
 
   Future<Response> getMe() => _dio.get('/me');
@@ -111,6 +128,19 @@ class ApiService {
 
   Future<Response> updatePassengers(String crowdLevel) =>
       _dio.patch('/passengers', data: {'crowd_level': crowdLevel});
+
+  // ── Live on-board count (shared with scanner app) ─────────────
+
+  /// Fetches the live passenger count for the driver's bus from the
+  /// shared /api/scanner/onboard endpoint. Returns the same number the
+  /// BUSGO Scanner app shows so both views stay consistent.
+  Future<Response> getOnBoardCount() {
+    // Note: this endpoint lives under /scanner but is just a read-only
+    // count protected by driver JWT — safe to call from the driver app.
+    return _dio.get(
+      kBaseUrl.replaceFirst('/api/driver', '/api/scanner/onboard'),
+    );
+  }
 
   // ── Emergency ─────────────────────────────────────────────────
 

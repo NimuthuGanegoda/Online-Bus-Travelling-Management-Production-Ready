@@ -245,12 +245,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 14),
                 Center(
-                  child: Text(
-                    'Forgot password? Contact admin',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: AppColors.primaryLight,
+                  child: TextButton(
+                    onPressed: () => context.push('/forgot-password'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primaryLight,
+                      textStyle: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
+                    child: const Text('Forgot password?'),
                   ),
                 ),
               ],

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_colors.dart';
+import '../services/api_service.dart';
 import '../widgets/scanner_topbar.dart';
+import 'login_screen.dart';
 import 'scan_success_screen.dart';
 import 'scan_error_screen.dart';
 
@@ -19,6 +21,12 @@ class _ActiveScannerScreenState extends State<ActiveScannerScreen>
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
+  bool _processing = false;
+
+  // Real on-board count from /api/driver/me (mapped from bus.crowd_level)
+  int _onBoard = 0;
+  int _capacity = 50;
+
   @override
   void initState() {
     super.initState();
@@ -29,7 +37,6 @@ class _ActiveScannerScreenState extends State<ActiveScannerScreen>
     _scanLineAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _scanLineController, curve: Curves.easeInOut),
     );
-
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -37,6 +44,53 @@ class _ActiveScannerScreenState extends State<ActiveScannerScreen>
     _pulseAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+
+    _refreshOnBoardCount();
+  }
+
+  Future<void> _handleEndSession() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('End scanning session?'),
+        content: const Text(
+          'You will be signed out and returned to the login screen.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('End Session'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    await ApiService().clearSession();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
+  Future<void> _refreshOnBoardCount() async {
+    try {
+      final res = await ApiService().getOnBoardCount();
+      if (!mounted || res == null) return;
+      setState(() {
+        _onBoard = res.passengers;
+        _capacity = res.capacity;
+      });
+    } catch (_) {/* leave count as-is on error */}
   }
 
   @override
@@ -54,12 +108,150 @@ class _ActiveScannerScreenState extends State<ActiveScannerScreen>
         child: Column(
           children: [
             const ScannerTopbar(),
-            Expanded(child: _buildViewfinder()),
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _processing ? null : _openQrInputDialog,
+                child: _buildViewfinder(),
+              ),
+            ),
             _buildBottomPanel(),
           ],
         ),
       ),
     );
+  }
+
+  // FR-43: send the scanned QR to the backend and display the verifying
+  // message returned by the server. (Real camera scanning is handled the
+  // same way once mobile_scanner is wired in — this manual entry path is
+  // kept as the testable demo flow.)
+  Future<void> _openQrInputDialog() async {
+    final controller = TextEditingController();
+    final qr = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Scan Passenger QR'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Tap the passenger QR card or paste the code below.',
+              style: TextStyle(fontSize: 13, color: Color(0xFF5A6477)),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: const InputDecoration(
+                hintText: 'BUSGO-xxxxxxxx-xxxx-…',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('Scan'),
+          ),
+        ],
+      ),
+    );
+
+    if (qr == null || qr.isEmpty) return;
+    await _handleScan(qr);
+  }
+
+  Future<void> _handleScan(String qrCode) async {
+    setState(() => _processing = true);
+    try {
+      final result = await ApiService().scan(qrCode);
+      if (!mounted) return;
+
+      // FR-43: small "verifying" message via snackbar.
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: result.action == 'boarded'
+              ? AppColors.success
+              : AppColors.primaryLight,
+          duration: const Duration(seconds: 4),
+          content: Row(
+            children: [
+              Icon(
+                result.action == 'boarded'
+                    ? Icons.login_rounded
+                    : Icons.logout_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  result.message,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      // Use the on-board count returned by the scan response — accurate
+      // and avoids a follow-up round trip.
+      if (result.onBoard != null) {
+        setState(() {
+          _onBoard  = result.onBoard!;
+          _capacity = result.capacity ?? _capacity;
+        });
+      }
+
+      // After a brief moment, jump to the success screen for richer feedback.
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ScanSuccessScreen()),
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.danger,
+          duration: const Duration(seconds: 5),
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  e.message,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ScanErrorScreen()),
+      );
+    } finally {
+      if (mounted) setState(() => _processing = false);
+    }
   }
 
   Widget _buildViewfinder() {
@@ -248,40 +440,6 @@ class _ActiveScannerScreenState extends State<ActiveScannerScreen>
                 ),
               ),
 
-              // Demo buttons
-              Positioned(
-                bottom: 14,
-                left: 0,
-                right: 0,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _demoBtn(
-                      'Simulate Success',
-                      AppColors.success,
-                      Icons.check_circle_outline,
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ScanSuccessScreen(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    _demoBtn(
-                      'Simulate Error',
-                      AppColors.danger,
-                      Icons.error_outline,
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ScanErrorScreen(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ],
           );
         },
@@ -327,40 +485,6 @@ class _ActiveScannerScreenState extends State<ActiveScannerScreen>
     );
   }
 
-  Widget _demoBtn(
-    String label,
-    Color color,
-    IconData icon,
-    VoidCallback onTap,
-  ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.15),
-          border: Border.all(color: color.withValues(alpha: 0.4)),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 15, color: color.withValues(alpha: 0.8)),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                color: Colors.white.withValues(alpha: 0.8),
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildBottomPanel() {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
@@ -397,7 +521,7 @@ class _ActiveScannerScreenState extends State<ActiveScannerScreen>
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Max capacity: 50',
+                      'Max capacity: $_capacity',
                       style: GoogleFonts.inter(
                         color: AppColors.softBlue.withValues(alpha: 0.7),
                         fontSize: 13,
@@ -422,7 +546,7 @@ class _ActiveScannerScreenState extends State<ActiveScannerScreen>
                 child: Row(
                   children: [
                     Text(
-                      '32',
+                      '$_onBoard',
                       style: GoogleFonts.inter(
                         color: Colors.white,
                         fontSize: 24,
@@ -431,7 +555,7 @@ class _ActiveScannerScreenState extends State<ActiveScannerScreen>
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      '/ 50',
+                      '/ $_capacity',
                       style: GoogleFonts.inter(
                         color: AppColors.softBlue.withValues(alpha: 0.6),
                         fontSize: 16,
@@ -449,7 +573,9 @@ class _ActiveScannerScreenState extends State<ActiveScannerScreen>
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
-              value: 32 / 50,
+              value: _capacity > 0
+                  ? (_onBoard / _capacity).clamp(0.0, 1.0)
+                  : 0.0,
               minHeight: 5,
               backgroundColor: Colors.white.withValues(alpha: 0.08),
               valueColor: const AlwaysStoppedAnimation<Color>(AppColors.online),
@@ -532,7 +658,7 @@ class _ActiveScannerScreenState extends State<ActiveScannerScreen>
               SizedBox(
                 height: 48,
                 child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: _handleEndSession,
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(
                       color: AppColors.danger.withValues(alpha: 0.4),

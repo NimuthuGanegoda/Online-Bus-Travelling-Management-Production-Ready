@@ -237,6 +237,19 @@ class _RouteMapScreenState extends State<RouteMapScreen>
                 ],
               ),
 
+              // FR-34 — pulse "STOP at next station" banner when within 150 m
+              if (trip.approachingStop && trip.nextStop != null)
+                Positioned(
+                  top: MediaQuery.of(context).padding.top + 60,
+                  left: 16,
+                  right: 16,
+                  child: _StopAlertBanner(
+                    stopName: trip.nextStop!.name,
+                    distanceMeters:
+                        trip.distanceToNextStopM?.round() ?? 0,
+                  ),
+                ),
+
               // Title overlay
               Positioned(
                 top: MediaQuery.of(context).padding.top + 14,
@@ -490,6 +503,106 @@ class _RouteMapScreenState extends State<RouteMapScreen>
         ),
         child: Icon(icon, size: 20, color: AppColors.primary),
       ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// FR-34 — Pulsing "STOP at next station" alert banner
+// Shown on the route map when the bus is within ~150 m of the next stop
+// ════════════════════════════════════════════════════════════════════
+class _StopAlertBanner extends StatefulWidget {
+  final String stopName;
+  final int distanceMeters;
+  const _StopAlertBanner({
+    required this.stopName,
+    required this.distanceMeters,
+  });
+
+  @override
+  State<_StopAlertBanner> createState() => _StopAlertBannerState();
+}
+
+class _StopAlertBannerState extends State<_StopAlertBanner>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _pulse,
+      builder: (context, _) {
+        final scale = 1.0 + _pulse.value * 0.04;
+        return Transform.scale(
+          scale: scale,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [Color(0xFFE65100), Color(0xFFFF6B00)],
+              ),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFE65100)
+                      .withValues(alpha: 0.45 + _pulse.value * 0.3),
+                  blurRadius: 18,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.notifications_active_rounded,
+                    color: Colors.white, size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'STOP at next station',
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${widget.stopName}  ·  ${widget.distanceMeters} m',
+                        style: GoogleFonts.inter(
+                          color: Colors.white.withValues(alpha: 0.92),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

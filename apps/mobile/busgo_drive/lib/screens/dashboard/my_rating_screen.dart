@@ -1,9 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_colors.dart';
+import '../../services/api_service.dart';
 
-class MyRatingScreen extends StatelessWidget {
+class MyRatingScreen extends StatefulWidget {
   const MyRatingScreen({super.key});
+
+  @override
+  State<MyRatingScreen> createState() => _MyRatingScreenState();
+}
+
+class _MyRatingScreenState extends State<MyRatingScreen> {
+  double _rating = 0.0;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchRating();
+  }
+
+  Future<void> _fetchRating() async {
+    try {
+      final res = await ApiService().getMe();
+      final r = (res.data?['data']?['rating'] as num?)?.toDouble();
+      if (!mounted) return;
+      setState(() {
+        _rating = r ?? 0.0;
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,12 +94,12 @@ class MyRatingScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          // Score
+          // Score (FR-36 — real value from /api/driver/me)
           RichText(
             text: TextSpan(
               children: [
                 TextSpan(
-                  text: '4.2',
+                  text: _loading ? '–' : _rating.toStringAsFixed(1),
                   style: GoogleFonts.inter(
                     fontSize: 54,
                     fontWeight: FontWeight.w900,
@@ -79,7 +108,7 @@ class MyRatingScreen extends StatelessWidget {
                   ),
                 ),
                 TextSpan(
-                  text: ' / 5',
+                  text: ' / 10',
                   style: GoogleFonts.inter(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
