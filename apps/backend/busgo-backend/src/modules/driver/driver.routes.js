@@ -25,6 +25,9 @@ router.get('/me',             ctrl.getMe);
 // GET  /api/driver/route
 router.get('/route',          ctrl.getRoute);
 
+// GET  /api/driver/ratings  — recent passenger ratings (FR-36)
+router.get('/ratings',        ctrl.getMyRatings);
+
 // PATCH /api/driver/location
 router.patch('/location',     ctrl.updateLocation);
 

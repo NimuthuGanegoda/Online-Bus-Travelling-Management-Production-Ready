@@ -456,21 +456,50 @@ class _DriverRatingScreenState extends State<DriverRatingScreen> {
           height: 48,
           child: ElevatedButton(
             onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
               tripProvider.setRating(_starRating);
-              // tripId and busId come from the ongoing/last trip; use
-              // ongoingTrip if available, otherwise fall back to the most
-              // recent completed trip.
-              final trip = tripProvider.ongoingTrip
-                  ?? (tripProvider.tripHistory.isNotEmpty
+
+              // tripId/busId come from the most recent trip — prefer the
+              // last completed one over a still-ongoing one.
+              final trip = (tripProvider.tripHistory.isNotEmpty
                       ? tripProvider.tripHistory.first
-                      : null);
-              if (trip?.id != null && trip?.busId != null) {
-                await tripProvider.submitRating(
-                  tripId: trip!.id!,
-                  busId:  trip.busId!,
+                      : tripProvider.ongoingTrip);
+
+              if (trip?.id == null || trip?.busId == null) {
+                messenger.showSnackBar(
+                  const SnackBar(
+                    backgroundColor: AppColors.danger,
+                    content: Text(
+                        'No trip to rate. Take a trip first, then submit a rating.'),
+                  ),
+                );
+                return;
+              }
+
+              final ok = await tripProvider.submitRating(
+                tripId: trip!.id!,
+                busId:  trip.busId!,
+              );
+
+              if (!mounted) return;
+              if (ok) {
+                messenger.showSnackBar(
+                  const SnackBar(
+                    backgroundColor: AppColors.success,
+                    content: Text('Thanks! Your rating has been saved.'),
+                  ),
+                );
+                setState(() => _submitted = true);
+              } else {
+                messenger.showSnackBar(
+                  SnackBar(
+                    backgroundColor: AppColors.danger,
+                    content: Text(
+                      tripProvider.errorMessage ?? 'Could not save rating.',
+                    ),
+                  ),
                 );
               }
-              if (mounted) setState(() => _submitted = true);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF1E5AA8),

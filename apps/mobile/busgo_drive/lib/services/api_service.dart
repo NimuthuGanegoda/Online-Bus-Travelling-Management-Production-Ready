@@ -142,6 +142,11 @@ class ApiService {
     );
   }
 
+  // ── Ratings (FR-36) ────────────────────────────────────────────
+
+  /// Recent passenger ratings + comments for this driver's bus(es).
+  Future<Response> getMyRatings() => _dio.get('/ratings');
+
   // ── Emergency ─────────────────────────────────────────────────
 
   Future<Response> sendEmergency({

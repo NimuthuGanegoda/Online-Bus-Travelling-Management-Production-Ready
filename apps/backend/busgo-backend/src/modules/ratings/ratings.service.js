@@ -75,7 +75,80 @@ export async function createRating(userId, dto) {
     throw error;
   }
 
+  // Update the driver's running rating so my_rating_screen + admin views
+  // reflect the new feedback immediately. Stars (1–5) are scaled to 0–10
+  // to match the FR-17 "rating out of 10" convention used in the DB.
+  await _refreshDriverRatingForBus(dto.bus_id);
+
   return data;
+}
+
+/**
+ * Recompute and persist the average rating for the driver of the given bus.
+ * Called after every new passenger rating.
+ */
+async function _refreshDriverRatingForBus(busId) {
+  const { data: bus } = await supabase
+    .from('buses')
+    .select('driver_id')
+    .eq('id', busId)
+    .maybeSingle();
+
+  const driverId = bus?.driver_id;
+  if (!driverId) return;
+
+  // Average of all ratings on buses currently assigned to this driver.
+  const { data: drivenBuses } = await supabase
+    .from('buses')
+    .select('id')
+    .eq('driver_id', driverId);
+
+  const ids = (drivenBuses ?? []).map((b) => b.id);
+  if (ids.length === 0) return;
+
+  const { data: ratingsRows } = await supabase
+    .from('ratings')
+    .select('stars')
+    .in('bus_id', ids);
+
+  if (!ratingsRows || ratingsRows.length === 0) return;
+
+  const avgStars = ratingsRows.reduce((s, r) => s + r.stars, 0) / ratingsRows.length;
+  const ratingOutOfTen = +(avgStars * 2).toFixed(1);
+
+  await supabase
+    .from('drivers')
+    .update({ rating: ratingOutOfTen })
+    .eq('id', driverId);
+}
+
+/**
+ * Recent passenger ratings for a driver — used by the driver app's
+ * "My Rating" screen to show real comments instead of hardcoded text.
+ */
+export async function getRecentRatingsForDriver(driverId, limit = 10) {
+  // Find all buses assigned to this driver
+  const { data: drivenBuses } = await supabase
+    .from('buses')
+    .select('id')
+    .eq('driver_id', driverId);
+
+  const ids = (drivenBuses ?? []).map((b) => b.id);
+  if (ids.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('ratings')
+    .select(`
+      id, stars, tags, comment, created_at,
+      users ( full_name ),
+      trips ( bus_routes ( route_number ) )
+    `)
+    .in('bus_id', ids)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return data ?? [];
 }
 
 /**

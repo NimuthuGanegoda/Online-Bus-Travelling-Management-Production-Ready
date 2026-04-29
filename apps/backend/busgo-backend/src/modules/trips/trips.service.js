@@ -162,7 +162,13 @@ export async function alightTrip(tripId, userId, dto) {
       fare_lkr: dto.fare_lkr || null,
     })
     .eq('id', tripId)
-    .select('id, status, boarded_at, alighted_at, fare_lkr')
+    // Include the joined bus + route info so the client's rating screen
+    // can show real driver name + route immediately after alighting.
+    .select(`
+      id, status, boarded_at, alighted_at, fare_lkr, bus_id,
+      buses ( id, bus_number, driver_name ),
+      bus_routes ( id, route_number, route_name, origin, destination, color )
+    `)
     .single();
 
   if (error) throw error;

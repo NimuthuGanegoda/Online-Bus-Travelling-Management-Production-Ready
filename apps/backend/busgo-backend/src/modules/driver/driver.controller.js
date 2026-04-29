@@ -1,5 +1,6 @@
 import * as authSvc from './driver.auth.service.js';
 import * as svc from './driver.service.js';
+import * as ratingsSvc from '../ratings/ratings.service.js';
 import { sendSuccess, sendError } from '../../utils/response.utils.js';
 
 // ── Auth ──────────────────────────────────────────────────────
@@ -102,6 +103,14 @@ export async function updatePassengers(req, res, next) {
     }
     const data = await svc.updatePassengerCount(req.driver.id, { crowd_level });
     sendSuccess(res, data, 'Passenger count updated');
+  } catch (err) { next(err); }
+}
+
+// FR-36 — recent passenger ratings for the driver's "My Rating" screen.
+export async function getMyRatings(req, res, next) {
+  try {
+    const data = await ratingsSvc.getRecentRatingsForDriver(req.driver.id);
+    sendSuccess(res, data, 'Recent ratings');
   } catch (err) { next(err); }
 }
 

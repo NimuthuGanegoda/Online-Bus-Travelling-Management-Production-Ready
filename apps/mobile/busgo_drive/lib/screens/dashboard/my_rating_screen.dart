@@ -13,6 +13,7 @@ class MyRatingScreen extends StatefulWidget {
 class _MyRatingScreenState extends State<MyRatingScreen> {
   double _rating = 0.0;
   bool _loading = true;
+  List<_Comment> _comments = [];
 
   @override
   void initState() {
@@ -21,17 +22,80 @@ class _MyRatingScreenState extends State<MyRatingScreen> {
   }
 
   Future<void> _fetchRating() async {
+    final api = ApiService();
     try {
-      final res = await ApiService().getMe();
-      final r = (res.data?['data']?['rating'] as num?)?.toDouble();
+      // Fetch driver score and recent passenger comments in parallel.
+      final results = await Future.wait([
+        api.getMe(),
+        api.getMyRatings(),
+      ]);
       if (!mounted) return;
+      final me      = results[0];
+      final ratings = results[1];
+      final r = (me.data?['data']?['rating'] as num?)?.toDouble();
+      final list = (ratings.data?['data'] as List?) ?? const [];
+
       setState(() {
         _rating = r ?? 0.0;
+        _comments = list
+            .map((row) => _commentFromApi(row as Map<String, dynamic>))
+            .toList();
         _loading = false;
       });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  static const _avatarPalette = <Color>[
+    Color(0xFF1565C0), Color(0xFFE65100), Color(0xFF2E7D32),
+    Color(0xFF7B1FA2), Color(0xFF00838F), Color(0xFFC2185B),
+    Color(0xFF455A64),
+  ];
+
+  _Comment _commentFromApi(Map<String, dynamic> row) {
+    final user = row['users'] as Map<String, dynamic>?;
+    final trip = row['trips'] as Map<String, dynamic>?;
+    final route = trip?['bus_routes'] as Map<String, dynamic>?;
+    final fullName = (user?['full_name'] as String?) ?? 'Anonymous';
+    final initials = fullName
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((p) => p.isNotEmpty)
+        .map((p) => p[0])
+        .take(2)
+        .join()
+        .toUpperCase();
+    final tagsRaw = row['tags'] as List?;
+    final tags = (tagsRaw ?? const [])
+        .whereType<String>()
+        .toList(growable: false);
+    final stars = (row['stars'] as num?)?.toInt() ?? 0;
+    final created = row['created_at'] as String?;
+    final dateLabel = created != null
+        ? _formatDate(DateTime.parse(created).toLocal())
+        : '—';
+    final routeLabel = route?['route_number'] != null
+        ? 'Route ${route!['route_number']}'
+        : '—';
+    return _Comment(
+      name:        fullName,
+      initials:    initials.isNotEmpty ? initials : '?',
+      avatarColor: _avatarPalette[fullName.hashCode.abs() % _avatarPalette.length],
+      stars:       stars,
+      text:        (row['comment'] as String?) ?? '(No comment)',
+      date:        dateLabel,
+      route:       routeLabel,
+      tags:        tags,
+    );
+  }
+
+  static String _formatDate(DateTime dt) {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+    return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
   }
 
   @override
@@ -252,58 +316,8 @@ class _MyRatingScreenState extends State<MyRatingScreen> {
   }
 
   Widget _buildRecentComments() {
-    final comments = [
-      _Comment(
-        name: 'Amira F.',
-        initials: 'AF',
-        avatarColor: const Color(0xFF1565C0),
-        stars: 5,
-        text: 'Very smooth driving, always on time. Made me feel safe throughout the journey.',
-        date: 'March 17, 2026',
-        route: 'Route 138',
-        tags: ['Safe Driving', 'On Time'],
-      ),
-      _Comment(
-        name: 'Rajith K.',
-        initials: 'RK',
-        avatarColor: const Color(0xFFE65100),
-        stars: 4,
-        text: 'Good driver but bus was slightly late at Fort station. Otherwise a pleasant ride.',
-        date: 'March 16, 2026',
-        route: 'Route 138',
-        tags: ['Pleasant'],
-      ),
-      _Comment(
-        name: 'Nimal S.',
-        initials: 'NS',
-        avatarColor: const Color(0xFF2E7D32),
-        stars: 5,
-        text: 'Polite and professional. Stopped exactly at the right spots. Would ride again!',
-        date: 'March 15, 2026',
-        route: 'Route 177',
-        tags: ['Professional', 'Accurate Stops'],
-      ),
-      _Comment(
-        name: 'Kumari D.',
-        initials: 'KD',
-        avatarColor: const Color(0xFF7B1FA2),
-        stars: 5,
-        text: 'Best bus experience I\'ve had. Clean bus, careful driving, and very courteous.',
-        date: 'March 14, 2026',
-        route: 'Route 138',
-        tags: ['Clean', 'Courteous'],
-      ),
-      _Comment(
-        name: 'Thilina P.',
-        initials: 'TP',
-        avatarColor: const Color(0xFF00838F),
-        stars: 3,
-        text: 'Driving was fine but the AC wasn\'t working properly. Got quite warm inside.',
-        date: 'March 13, 2026',
-        route: 'Route 177',
-        tags: ['AC Issue'],
-      ),
-    ];
+    // FR-36 — real passenger ratings from /api/driver/ratings.
+    final comments = _comments;
 
     return Container(
       decoration: BoxDecoration(
@@ -351,7 +365,23 @@ class _MyRatingScreenState extends State<MyRatingScreen> {
             ],
           ),
           const SizedBox(height: 14),
-          ...comments.map((c) => _buildCommentItem(c)),
+          if (comments.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Center(
+                child: Text(
+                  _loading
+                      ? 'Loading recent comments…'
+                      : 'No passenger ratings yet.',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: const Color(0xFF9E9E9E),
+                  ),
+                ),
+              ),
+            )
+          else
+            ...comments.map((c) => _buildCommentItem(c)),
         ],
       ),
     );
